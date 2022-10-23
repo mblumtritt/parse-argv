@@ -1,0 +1,23 @@
+Usage: simple [options] <input> [<output>]
+
+This is a demo for the command 'simple', which accepts some options, an optional
+<input> name and a required <output> name.
+
+Options:
+  -s, --switch       defines a (boolean) switch named 'switch'
+  --next             defines a (boolean) switch named 'next'
+  -n                 defines a (boolean) switch named 'n'
+  -o, --opt <option> defines an option named 'option'
+  --pref <prefix>    defines an option named 'prefix'
+  -p:<pref>          defines an option named 'pref'
+
+Options need not to be defined in one paragraph, multiple definitions are
+allowed.
+
+There are two special switches for simple commands, which prevent
+further parameter parsing to prefer handling of 'help' and 'version' as a kind
+of sub-commands. When these are defined, then you should test for these first.
+
+More Options:
+  -h, --help          "special" switch named 'help'
+  -v, --version       "special" switch named 'version'
