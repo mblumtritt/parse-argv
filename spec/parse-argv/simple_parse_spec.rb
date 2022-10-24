@@ -7,7 +7,7 @@ RSpec.describe 'simple command parsing' do
     context 'when a long format and a shortcut are defined' do
       let(:help_text) { <<~HELP }
         usage: test
-        -o, --option    boolean option
+          -o, --option    boolean option
       HELP
 
       it 'accepts the long format' do
@@ -22,7 +22,7 @@ RSpec.describe 'simple command parsing' do
     context 'when only the long format is defined' do
       let(:help_text) { <<~HELP }
         usage: test
-        --option    boolean option
+          --option    boolean option
       HELP
 
       it 'accepts the long format' do
@@ -33,7 +33,7 @@ RSpec.describe 'simple command parsing' do
     context 'when only the shortcut format is defined' do
       let(:help_text) { <<~HELP }
         usage: test
-        -o    boolean option
+          -o    boolean option
       HELP
 
       it 'accepts the shortcut format' do
@@ -46,7 +46,7 @@ RSpec.describe 'simple command parsing' do
     context 'when a long format and a shortcut are defined' do
       let(:help_text) { <<~HELP }
         usage: test
-        -o, --opt <option>    option with parameter
+          -o, --opt <option>    option with parameter
       HELP
 
       it 'accepts the long format' do
@@ -65,7 +65,7 @@ RSpec.describe 'simple command parsing' do
     context 'when only the long format is defined' do
       let(:help_text) { <<~HELP }
         usage: test
-        --opt <option>    option with parameter
+          --opt <option>    option with parameter
       HELP
 
       it 'accepts the long format' do
@@ -78,7 +78,7 @@ RSpec.describe 'simple command parsing' do
     context 'when only the shortcut format is defined' do
       let(:help_text) { <<~HELP }
         usage: test
-        -o <option>    option with parameter
+          -o <option>    option with parameter
       HELP
 
       it 'accepts the shortcut format' do
@@ -91,7 +91,7 @@ RSpec.describe 'simple command parsing' do
     context 'when a long format and a shortcut are defined' do
       let(:help_text) { <<~HELP }
         usage: test
-        -o, --opt:<option>    option with parameter
+          -o, --opt:<option>    option with parameter
       HELP
 
       it 'accepts the long format' do
@@ -110,7 +110,7 @@ RSpec.describe 'simple command parsing' do
     context 'when only the long format is defined' do
       let(:help_text) { <<~HELP }
         usage: test
-        --opt:<option>    option with parameter
+          --opt:<option>    option with parameter
       HELP
 
       it 'accepts the long format' do
@@ -123,7 +123,7 @@ RSpec.describe 'simple command parsing' do
     context 'when only the shortcut format is defined' do
       let(:help_text) { <<~HELP }
         usage: test
-        -o:<option>    option with parameter
+          -o:<option>    option with parameter
       HELP
 
       it 'accepts the shortcut format' do
@@ -212,6 +212,46 @@ RSpec.describe 'simple command parsing' do
         expect(result.file1).to eq 'arg1'
         expect(result.member?(:additional)).to be false
       end
+    end
+  end
+
+  context 'when an argument name is already used' do
+    let(:help_text) { 'usage: test <file1> [<file1>]' }
+
+    it 'raises an error' do
+      expect { ParseArgv.from(help_text, []) }.to raise_error(
+        ArgumentError,
+        'argument already defined - file1'
+      )
+    end
+  end
+
+  context 'when an option name is already used' do
+    let(:help_text) { <<~HELP }
+      usage: test
+        -s, --switch   a switch
+        -s, --stop     another switch
+      HELP
+
+    it 'raises an error' do
+      expect { ParseArgv.from(help_text, []) }.to raise_error(
+        ArgumentError,
+        'option already defined - s'
+      )
+    end
+  end
+
+  context 'when options defined before usage line' do
+    let(:help_text) { <<~HELP }
+        -s, --switch   a switch
+      usage: test
+      HELP
+
+    it 'raises an error' do
+      expect { ParseArgv.from(help_text, []) }.to raise_error(
+        ArgumentError,
+        "options can only be defined after a 'usage' line"
+      )
     end
   end
 end

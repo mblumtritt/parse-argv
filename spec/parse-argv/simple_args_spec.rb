@@ -2,7 +2,7 @@
 
 require_relative '../helper'
 
-RSpec.describe 'simple command argument handling' do
+RSpec.describe 'simple command arguments handling' do
   subject(:result) { ParseArgv.from(help_text, argv) }
 
   let(:help_text) { <<~HELP }
@@ -31,7 +31,7 @@ RSpec.describe 'simple command argument handling' do
   HELP
 
   context 'when a required argument is missing' do
-    let(:argv) { %w[] }
+    let(:argv) { [] }
 
     it 'raises an ParseArgv::Error' do
       expect { result }.to raise_error(
@@ -116,16 +116,7 @@ RSpec.describe 'simple command argument handling' do
 
   context 'when all standard options are configured' do
     let(:argv) do
-      %w[
-        -s
-        --next
-        --opt
-        option_arg
-        -p
-        prefix_arg
-        input_arg
-        output_arg
-      ]
+      %w[-s --next --opt option_arg -p prefix_arg input_arg output_arg]
     end
 
     it 'parses all attributes correctly' do

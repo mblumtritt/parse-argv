@@ -37,36 +37,166 @@ module ParseArgv
     end
   end
 
-  def self.from(help_text, argv = ARGV)
-    cmd = Factory.new.parse(help_text) or
-      raise(ArgumentError, 'help text does not define a valid command')
-    Result
-      .new(cmd.name, cmd.help_text, cmd.parser.parse(argv, :help, :version))
-      .tap { |result| yield(result) if block_given? }
+  class DoublicateOptionDefinitionError < ArgumentError
+    def initialize(name)
+      super("option already defined - #{name}")
+    end
   end
 
-  class Parser
-    class DoublicateOptionDefinitionError < ArgumentError
-      def initialize(name)
-        super("option already defined - #{name}")
-      end
+  class DoublicateArgumentDefinitionError < ArgumentError
+    def initialize(name)
+      super("argument already defined - #{name}")
+    end
+  end
+
+  class UsageLineMissingError < ArgumentError
+    def initialize
+      super("options can only be defined after a 'usage' line")
+    end
+  end
+
+  class NoCommandDefinedError < ArgumentError
+    def initialize
+      super('help text does not define a valid command')
+    end
+  end
+
+  class NoDefaultCommandDefinedError < ArgumentError
+    def initialize
+      super('no default command defined')
+    end
+  end
+
+  class InvalidSubcommandNameError < ArgumentError
+    def initialize(default_name, bad_name)
+      super("invalid sub-command name for #{default_name} - #{bad_name}")
+    end
+  end
+
+  class << self
+    def from(help_text, argv = ARGV)
+      commands = Factory.new.parse(help_text)
+      raise(NoCommandDefinedError) if commands.empty?
+      result = find_command_for(argv, commands).to_result(argv, commands)
+      block_given? ? yield(result) : result
     end
 
-    class DoublicateArgumentDefinitionError < ArgumentError
-      def initialize(name)
-        super("argument already defined - #{name}")
-      end
+    private
+
+    def find_command_for(argv, commands)
+      default = checked_commands(commands)
+      result = find_command(argv, default.name, commands) || default
+      commands.unshift(default)
+      result
     end
 
-    attr_reader :command
+    def find_command(argv, default_name, commands)
+      argv
+        .size
+        .downto(1) do |i|
+          name = argv.take(i).unshift(default_name).join(' ')
+          cmd = commands.find { |command| command.name == name } or next
+          argv.shift(i)
+          return cmd
+        end
+      nil
+    end
 
-    def initialize(command)
-      @command = command
+    def checked_commands(commands)
+      default = commands.find { |cmd| cmd.name.index(' ').nil? }
+      raise(NoDefaultCommandDefinedError) if default.nil?
+      commands.delete(default)
+      prefix = "#{default.name} "
+      bad = commands.find { |cmd| !cmd.name.start_with?(prefix) }
+      return default if bad.nil?
+      raise(InvalidSubcommandNameError.new(default.name, bad.name))
+    end
+  end
+
+  class Factory
+    def parse(text)
+      @commands = []
+      @help = []
+      text.each_line(chomp: true) do |line|
+        case line
+        when /usage: (\w+([ \w]+)?)/i
+          new_command(Regexp.last_match)
+        when /\A\s+-([[:alnum:]]), --([[[:alnum:]]-]+)[ :]<([[:lower:]]+)>\s+\S+/
+          option(Regexp.last_match)
+        when /\A\s+-{1,2}([[[:alnum:]]-]+)[ :]<([[:lower:]]+)>\s+\S+/
+          simple_option(Regexp.last_match)
+        when /\A\s+-([[:alnum:]]), --([[[:alnum:]]-]+)\s+\S+/
+          switch(Regexp.last_match)
+        when /\A\s+-{1,2}([[[:alnum:]]-]+)\s+\S+/
+          simple_switch(Regexp.last_match[1])
+        end
+        @help << line
+      end
+      @commands
+    end
+
+    private
+
+    def command
+      @command || raise(UsageLineMissingError)
+    end
+
+    def option(match)
+      command.option(match[1], match[3])
+      command.option(match[2], match[3])
+    end
+
+    def simple_option(match)
+      command.option(match[1], match[2])
+    end
+
+    def switch(match)
+      command.switch(match[1], match[2])
+      command.switch(match[2], match[2])
+    end
+
+    def simple_switch(name)
+      command.switch(name, name)
+    end
+
+    def new_command(match)
+      name = match[1].rstrip
+      @help = [] unless @commands.empty?
+      @command = CommandParser.new(name, @help)
+      define_arguments(@command, match.post_match)
+      @commands << @command
+    end
+
+    def define_arguments(parser, str)
+      str.scan(/(\[?<([[:alnum:]]+)>\]?|\[?\.{3}\]?)/) do |(f, n)|
+        parser.argument(n || '...', required: f[0] != '[')
+      end
+    end
+  end
+
+  class Command
+    attr_reader :name
+
+    def initialize(name, help)
+      @name = name
+      @help = help
+    end
+
+    def help
+      return @help if @help.is_a?(String)
+      @help.pop while @help.last.empty?
+      @help = @help.join("\n").freeze
+    end
+  end
+
+  class CommandParser < Command
+    def initialize(name, help)
+      super
       @options = {}
       @arguments = {}
     end
 
-    def switch(name, var_name = name)
+    def switch(name, var_name)
       raise(DoublicateOptionDefinitionError, name) if known?(name)
       @options[name] = "!#{var_name}"
     end
@@ -81,20 +211,27 @@ module ParseArgv
       @arguments[name] = required
     end
 
-    def parse(argv, *special_commands)
+    def parse(argv)
       @result = {}.compare_by_identity
       arguments = parse_argv(Array.new(argv))
       process_switches
-      process(arguments) unless consider?(special_commands)
+      process(arguments) unless help?
       @result
+    end
+
+    def to_result(argv, all_commands)
+      Result.new(name, help, parse(argv), all_commands)
+    end
+
+    def simplify
+      Command.new(@name, @help)
     end
 
     private
 
-    def consider?(special_commands)
-      special_commands.any? do |name|
-        @options[name.to_s] == "!#{name}" && @result[name] == true
-      end
+    def help?
+      name.index(' ').nil? &&
+        (@result[:help] == true || @result[:version] == true)
     end
 
     def known?(name)
@@ -124,13 +261,13 @@ module ParseArgv
       allow_files = @arguments.delete('...')
       while arguments.size < @arguments.size
         key = rightmost_nonrequired_argument and next @arguments.delete(key)
-        raise(ArgumentMissingError.new(@command, @arguments.keys.last))
+        raise(ArgumentMissingError.new(@name, @arguments.keys.last))
       end
       argument_results(arguments)
       if arguments.empty?
-        raise(ArgumentMissingError, @command) if allow_files
+        raise(ArgumentMissingError, @name) if allow_files
       else
-        raise(TooManyArgumentsError, @command) if allow_files.nil?
+        raise(TooManyArgumentsError, @name) if allow_files.nil?
         @result[:additional] = arguments
       end
     end
@@ -146,19 +283,17 @@ module ParseArgv
 
     def handle_option(name, argv, pref = '-')
       key = @options[name]
-      raise(UnknonwOptionError.new(@command, "#{pref}-#{name}")) if key.nil?
+      raise(UnknonwOptionError.new(@name, "#{pref}-#{name}")) if key.nil?
       return @result[key[1..].to_sym] = true if key[0] == '!'
       @result[key.to_sym] = value = argv.shift
       return unless value.nil? || value[0] == '-'
-      raise(OptionArgumentMissingError.new(@command, key, "#{pref}-#{name}"))
+      raise(OptionArgumentMissingError.new(@name, key, "#{pref}-#{name}"))
     end
 
     def handle_option_arg(match)
       name = match[1]
-      key = @options[name]
-      if key.nil?
-        raise(UnknonwOptionError.new(@command, "#{match.pre_match}#{name}"))
-      end
+      key = @options[name] or
+        raise(UnknonwOptionError.new(@name, "#{match.pre_match}#{name}"))
       return @result[key[1..].to_sym] = as_boolean(match[2]) if key[0] == '!'
       @result[key.to_sym] = match[2]
     end
@@ -181,12 +316,13 @@ module ParseArgv
   end
 
   class Result
-    attr_reader :command_name, :help_text
+    attr_reader :command_name, :help_text, :all_commands
 
-    def initialize(command_name, help_text, args)
+    def initialize(command_name, help_text, args, all_commands)
       @command_name = command_name
       @help_text = help_text
       @args = args
+      @all_commands = all_commands.map!(&:simplify).sort_by(&:name).freeze
     end
 
     def member?(name)
@@ -221,79 +357,5 @@ module ParseArgv
     end
   end
 
-  Command =
-    Struct.new(:parser, :help) do
-      def name
-        parser.command
-      end
-
-      def help_text
-        help.pop while help.last.empty?
-        help.join("\n").freeze
-      end
-    end
-
-  class Factory
-    class UsageLineMissingError < ArgumentError
-      def initialize
-        super("options can only be defined after a 'usage' line")
-      end
-    end
-
-    def parse(text)
-      @help = []
-      text.each_line(chomp: true) do |line|
-        case line
-        when /usage: ([[:alnum:]]+)/i
-          new_command(Regexp.last_match)
-        when /-([[:alnum:]]), --([[[:alnum:]]-]+)[ :]<([[:lower:]]+)>\s+\S+/
-          option(Regexp.last_match)
-        when /-{1,2}([[[:alnum:]]-]+)[ :]<([[:lower:]]+)>\s+\S+/
-          simple_option(Regexp.last_match)
-        when /-([[:alnum:]]), --([[[:alnum:]]-]+)\s+\S+/
-          switch(Regexp.last_match)
-        when /-{1,2}([[[:alnum:]]-]+)\s+\S+/
-          simple_switch(Regexp.last_match)
-        end
-        @help << line
-      end
-      command
-    end
-
-    private
-
-    def command
-      @command || raise(UsageLineMissingError)
-    end
-
-    def option(match, parser = command.parser)
-      parser.option(match[1], match[3])
-      parser.option(match[2], match[3])
-    end
-
-    def simple_option(match)
-      command.parser.option(match[1], match[2])
-    end
-
-    def switch(match, parser = command.parser)
-      parser.switch(match[1], match[2])
-      parser.switch(match[2], match[2])
-    end
-
-    def simple_switch(match)
-      command.parser.switch(match[1], match[1])
-    end
-
-    def new_command(match)
-      @command = Command.new(parser = Parser.new(match[1]), @help)
-      match
-        .post_match
-        .scan(/(\[?<([[:alnum:]]+)>\]?|\[?\.{3}\]?)/) do |(f, n)|
-          parser.argument(n || '...', required: f[0] != '[')
-        end
-      @command
-    end
-  end
-
-  private_constant(:Factory, :Parser, :Result)
+  private_constant(*(constants - [:Error]))
 end
