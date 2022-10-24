@@ -2,9 +2,33 @@
 
 require_relative '../helper'
 
-RSpec.describe 'simple command parsing' do
+RSpec.describe 'simple command argument handling' do
   subject(:result) { ParseArgv.from(help_text, argv) }
-  let(:help_text) { Fixture['simple'] }
+
+  let(:help_text) { <<~HELP }
+    Usage: simple [options] <input> [<output>]
+
+    This is a demo for the command 'simple', which accepts some options, an
+    optional <input> name and a required <output> name.
+
+    Options:
+      -s, --switch         defines a (boolean) switch named 'switch'
+      -n, --next           defines a (boolean) switch named 'next'
+      -o, --opt <option>   defines an option named 'option'
+      -p, --pref <prefix>  defines an option named 'prefix'
+
+    Options need not to be defined in one paragraph, multiple definitions are
+    allowed.
+
+    There are two special switches for simple commands, which prevent
+    further parameter parsing to prefer handling of 'help' and 'version' as a
+    kind of sub-commands. When these are defined, then you should test for these
+    first.
+
+    More Options:
+      -h, --help           "special" switch named 'help'
+      -v, --version        "special" switch named 'version'
+  HELP
 
   context 'when a required argument is missing' do
     let(:argv) { %w[] }
@@ -31,7 +55,6 @@ RSpec.describe 'simple command parsing' do
         expect(result.version?).to be true
       end
     end
-
   end
 
   context 'when too many arguments are given' do
@@ -50,20 +73,18 @@ RSpec.describe 'simple command parsing' do
 
     context 'attribute existence' do
       it 'confirms if an attribute exists' do
-        expect(result.respond_to?('switch')).to be true
-        expect(result.respond_to?(:next)).to be true
-        expect(result.respond_to?(:n)).to be true
-        expect(result.respond_to?(:help)).to be true
-        expect(result.respond_to?(:version)).to be true
-        expect(result.respond_to?(:input)).to be true
+        expect(result.member?('switch')).to be true
+        expect(result.member?(:next)).to be true
+        expect(result.member?(:help)).to be true
+        expect(result.member?(:version)).to be true
+        expect(result.member?(:input)).to be true
       end
 
       it 'does not confirm if an attribute does not exist' do
-        expect(result.respond_to?('option')).to be false
-        expect(result.respond_to?(:prefix)).to be false
-        expect(result.respond_to?(:pref)).to be false
-        expect(result.respond_to?(:output)).to be false
-        expect(result.respond_to?(:foo)).to be false
+        expect(result.member?('option')).to be false
+        expect(result.member?(:prefix)).to be false
+        expect(result.member?(:output)).to be false
+        expect(result.member?(:foo)).to be false
       end
     end
 
@@ -87,7 +108,6 @@ RSpec.describe 'simple command parsing' do
         input: 'input_arg',
         switch: false,
         next: false,
-        n: false,
         help: false,
         version: false
       )
@@ -99,13 +119,10 @@ RSpec.describe 'simple command parsing' do
       %w[
         -s
         --next
-        -n
         --opt
         option_arg
-        --pref
-        prefix_arg
         -p
-        pref_arg
+        prefix_arg
         input_arg
         output_arg
       ]
@@ -117,10 +134,8 @@ RSpec.describe 'simple command parsing' do
         output: 'output_arg',
         switch: true,
         next: true,
-        n: true,
         option: 'option_arg',
         prefix: 'prefix_arg',
-        pref: 'pref_arg',
         help: false,
         version: false
       )
@@ -128,17 +143,16 @@ RSpec.describe 'simple command parsing' do
   end
 
   context 'when short hand options are used' do
-    let(:argv) { %w[-snop option_arg pref_arg input_arg output_arg] }
+    let(:argv) { %w[-snop option_arg prefix_arg input_arg output_arg] }
 
     it 'allows to condense the options' do
       expect(result.to_h).to eq(
         input: 'input_arg',
         output: 'output_arg',
         switch: true,
-        next: false,
-        n: true,
+        next: true,
         option: 'option_arg',
-        pref: 'pref_arg',
+        prefix: 'prefix_arg',
         help: false,
         version: false
       )
@@ -147,7 +161,7 @@ RSpec.describe 'simple command parsing' do
 
   context 'when alternative option value assignment is used' do
     let(:argv) do
-      %w[-s:true --next:on -n:t -o:option_arg --pref:prefix_arg input_arg]
+      %w[-s:true --next:on -o:option_arg --pref:prefix_arg input_arg]
     end
 
     it 'allows to use alternative option value assignment' do
@@ -155,7 +169,6 @@ RSpec.describe 'simple command parsing' do
         input: 'input_arg',
         switch: true,
         next: true,
-        n: true,
         option: 'option_arg',
         prefix: 'prefix_arg',
         help: false,
@@ -171,6 +184,17 @@ RSpec.describe 'simple command parsing' do
       expect { result }.to raise_error(
         ParseArgv::Error,
         "simple: argument <option> missing - '-o'"
+      )
+    end
+  end
+
+  context 'when an undefined option is used' do
+    let(:argv) { %w[--foo] }
+
+    it 'raises an error' do
+      expect { result }.to raise_error(
+        ParseArgv::Error,
+        "simple: unknown option - '--foo'"
       )
     end
   end

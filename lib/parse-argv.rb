@@ -121,27 +121,27 @@ module ParseArgv
     end
 
     def process(arguments)
-      allow_files = nil
-      @arguments.each_pair do |arg, required|
-        next allow_files = required if arg == '...'
-        next if arguments.first.nil? && !required
-        value = arguments.shift
-        raise(ArgumentMissingError.new(@command, arg)) if value.nil?
-        @result[arg.to_sym] = value
+      allow_files = @arguments.delete('...')
+      while arguments.size < @arguments.size
+        key = rightmost_nonrequired_argument and next @arguments.delete(key)
+        raise(ArgumentMissingError.new(@command, @arguments.keys.last))
       end
-      assemble(allow_files, arguments)
+      argument_results(arguments)
+      if arguments.empty?
+        raise(ArgumentMissingError, @command) if allow_files
+      else
+        raise(TooManyArgumentsError, @command) if allow_files.nil?
+        @result[:additional] = arguments
+      end
     end
 
-    def assemble(allow_files, arguments)
-      case allow_files
-      when nil
-        raise(TooManyArgumentsError, @command) unless arguments.empty?
-      when true
-        raise(ArgumentMissingError, @command) if arguments.empty?
-        @result[:additional] = arguments
-      when false
-        @result[:additional] = arguments unless arguments.empty?
-      end
+    def argument_results(args)
+      @arguments.each_key { |name| @result[name.to_sym] = args.shift }
+    end
+
+    def rightmost_nonrequired_argument
+      @arguments.keys.reverse_each { |key| return key unless @arguments[key] }
+      nil
     end
 
     def handle_option(name, argv, pref = '-')
@@ -187,6 +187,10 @@ module ParseArgv
       @command_name = command_name
       @help_text = help_text
       @args = args
+    end
+
+    def member?(name)
+      @args.key?(name.to_sym)
     end
 
     def to_h
@@ -284,8 +288,8 @@ module ParseArgv
       @command = Command.new(parser = Parser.new(match[1]), @help)
       match
         .post_match
-        .scan(/(\[?<([[:alnum:]]+|\.{3})>\]?)/) do |(f, n)|
-          parser.argument(n, required: f[0] != '[')
+        .scan(/(\[?<([[:alnum:]]+)>\]?|\[?\.{3}\]?)/) do |(f, n)|
+          parser.argument(n || '...', required: f[0] != '[')
         end
       @command
     end

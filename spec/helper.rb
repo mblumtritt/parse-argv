@@ -10,17 +10,3 @@ RSpec.configure do |config|
   config.warnings = true
   config.order = :random
 end
-
-module Fixture
-  ROOT = "#{__dir__}/fixtures"
-
-  def self.file_name(name)
-    name = name.to_s
-    name = "#{name}.txt" if File.extname(name).empty?
-    File.expand_path(name.to_s, ROOT)
-  end
-
-  def self.[](name)
-    File.read(file_name(name))
-  end
-end
