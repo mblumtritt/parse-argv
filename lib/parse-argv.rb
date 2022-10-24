@@ -11,11 +11,8 @@ module ParseArgv
   end
 
   class ArgumentMissingError < Error
-    def initialize(command, name = nil)
-      super(
-        command,
-        name.nil? ? 'argument missing' : "argument missing - <#{name}>"
-      )
+    def initialize(command, name)
+      super(command, "argument missing - <#{name}>")
     end
   end
 
@@ -168,8 +165,10 @@ module ParseArgv
     end
 
     def define_arguments(parser, str)
-      str.scan(/(\[?<([[:alnum:]]+)>\]?|\[?\.{3}\]?)/) do |(f, n)|
-        parser.argument(n || '...', required: f[0] != '[')
+      return if str.empty?
+      str.scan(/(\[?<([[:alnum:]]+)>(\.{3})?\]?)/) do |(all, name, cons)|
+        type = all[0] == '[' ? 'o' : 'r'
+        parser.argument(name.to_sym, type + (cons.nil? ? 's' : 'a'))
       end
     end
   end
@@ -206,9 +205,9 @@ module ParseArgv
       @options[name] = var_name
     end
 
-    def argument(name, required:)
+    def argument(name, type)
       raise(DoublicateArgumentDefinitionError, name) if known?(name)
-      @arguments[name] = required
+      @arguments[name] = type
     end
 
     def parse(argv)
@@ -257,19 +256,25 @@ module ParseArgv
       arguments
     end
 
-    def process(arguments)
-      allow_files = @arguments.delete('...')
-      while arguments.size < @arguments.size
+    def process(argv)
+      while argv.size < @arguments.size
         key = rightmost_nonrequired_argument and next @arguments.delete(key)
         raise(ArgumentMissingError.new(@name, @arguments.keys.last))
       end
-      argument_results(arguments)
-      if arguments.empty?
-        raise(ArgumentMissingError, @name) if allow_files
-      else
-        raise(TooManyArgumentsError, @name) if allow_files.nil?
-        @result[:additional] = arguments
+      @arguments.each_pair do |key, type|
+        @result[key] = case type
+        when 'os'
+          argv.shift unless argv.empty?
+        when 'oa'
+          argv.shift(argv.size) unless argv.empty?
+        when 'rs'
+          argv.shift or raise(ArgumentMissingError.new(@name, key))
+        when 'ra'
+          raise(ArgumentMissingError.new(@name, key)) if argv.empty?
+          argv.shift(argv.size)
+        end
       end
+      raise(TooManyArgumentsError, @name) unless argv.empty?
     end
 
     def argument_results(args)
@@ -277,8 +282,7 @@ module ParseArgv
     end
 
     def rightmost_nonrequired_argument
-      @arguments.keys.reverse_each { |key| return key unless @arguments[key] }
-      nil
+      @arguments.keys.reverse!.find { |key| @arguments[key][0] == 'o' }
     end
 
     def handle_option(name, argv, pref = '-')

@@ -18,8 +18,8 @@ RSpec.describe 'multi-command arguments handling' do
       version   version command
 
     Options:
-      -h, --help           shortcut for 'help' command
-      -v, --version        'version' command shortcut
+      -h, --help      shortcut for 'help' command
+      -v, --version   'version' command shortcut
 
     Use `multi help <command>` to get command specific help
 
@@ -28,18 +28,18 @@ RSpec.describe 'multi-command arguments handling' do
     This is the 'foo' command. Notice there is a `foo bar` sub-command.
 
     Options:
-      -s, --switch           simpe switch (boolean option)
-      -o, --option <option>  option with parameter
+      -s, --switch             simpe switch (boolean option)
+      -o, --option <option>    option with parameter
 
-    Usage: multi foo bar [options] [...]
+    Usage: multi foo bar [options] [<files>...]
 
     This is the 'foo bar' command.
 
     Options:
-      -s, --switch           simpe switch (boolean option)
-      -o, --option <option>  option with parameter
+      -s, --switch            simpe switch (boolean option)
+      -o, --option:<option>   option with parameter
 
-    Usage: multi help [<command>]
+    Usage: multi help [<command>...]
 
     Show help or <command> specific help.
   HELP
@@ -114,11 +114,11 @@ RSpec.describe 'multi-command arguments handling' do
     it 'returns correct options' do
       expect(result.switch?).to be true
       expect(result.option).to eq 'opt'
-      expect(result.additional).to eq %w[arg1]
+      expect(result.files).to eq %w[arg1]
     end
   end
 
-  xcontext 'sub-command: help' do
+  context 'sub-command: help' do
     let(:argv) { %w[help] }
 
     it 'returns the sub-command' do
@@ -130,7 +130,7 @@ RSpec.describe 'multi-command arguments handling' do
     end
   end
 
-  xcontext 'sub-command: help foo bar' do
+  context 'sub-command: help foo bar' do
     let(:argv) { %w[help foo bar] }
 
     it 'returns the sub-command' do
@@ -138,7 +138,7 @@ RSpec.describe 'multi-command arguments handling' do
     end
 
     it 'returns correct options' do
-      expect(result.command).to eq 'foo bar'
+      expect(result.command).to eq %w[foo bar]
     end
   end
 end
