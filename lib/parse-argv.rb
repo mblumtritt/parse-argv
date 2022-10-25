@@ -9,6 +9,12 @@ module ParseArgv
     end
   end
 
+  class InvalidCommandError < Error
+    def initialize(command, name)
+      super(command, "invalid command - #{name}")
+    end
+  end
+
   class ArgumentMissingError < Error
     def initialize(command, name)
       super(command, "argument missing - <#{name}>")
@@ -46,14 +52,22 @@ module ParseArgv
   end
 
   class UsageLineMissingError < ArgumentError
-    def initialize
-      super("options can only be defined after a 'usage' line")
+    def initialize(line_number)
+      super(
+        "options can only be defined after a 'usage' line - line #{line_number}"
+      )
     end
   end
 
   class NoCommandDefinedError < ArgumentError
-    def initialize
-      super('help text does not define a valid command')
+    def initialize(line_number)
+      super("help text does not define a valid command - line #{line_number}")
+    end
+  end
+
+  class DoublicateCommandDefinitionError < ArgumentError
+    def initialize(name, line_number)
+      super("command '#{name}' already defined - line #{line_number}")
     end
   end
 
@@ -72,7 +86,15 @@ module ParseArgv
   def self.from(help_text, argv = ARGV)
     command = Assembler.call(help_text, argv)
     block_given? ? yield(command) : command
+  rescue Error => e
+    @on_error&.call(e) or raise
   end
+
+  def self.on_error(&block)
+    @on_error = block
+  end
+
+  @on_error = ->(e) { $stderr.puts(e) or exit(1) }
 
   class Assembler
     def self.call(help_text, argv)
@@ -82,7 +104,9 @@ module ParseArgv
     def parse(help_text)
       @commands = []
       @help = []
+      @line_number = 0
       help_text.each_line(chomp: true) do |line|
+        @line_number += 1
         case line
         when /usage: (\w+([ \w]+)?)/i
           new_command(Regexp.last_match)
@@ -101,23 +125,44 @@ module ParseArgv
     end
 
     def command_from(argv)
-      raise(NoCommandDefinedError) if @commands.empty?
-      prepare_subcommands(default = extract_default_command)
-      found = find_command(argv) || default
-      @commands.unshift(default).map!(&:simplify).sort_by(&:name)
-      found.to_result(argv, @commands.freeze)
+      raise(NoCommandDefinedError, @line_number) if @commands.empty?
+      default = extract_default_command
+      if @commands.empty?
+        default.to_result(argv, [default.to_cmd].freeze)
+      elsif argv.empty?
+        as_result(argv, default)
+      else
+        sub_command_from(default, argv)
+      end
     end
 
     private
 
-    def find_command(argv)
-      argv
+    def as_result(argv, found, default = found)
+      found.to_result(
+        argv,
+        @commands.map!(&:to_cmd).sort_by(&:name).unshift(default)
+      )
+    end
+
+    def sub_command_from(default, argv)
+      prepare_subcommands(default)
+      args = argv.take_while { |arg| arg[0] != '-' }
+      found, prefix = args.empty? ? default : find_command(args)
+      if found.nil?
+        raise(InvalidCommandError.new(default.full_name, args.first))
+      end
+      argv.shift(prefix) if prefix
+      as_result(argv, found, default)
+    end
+
+    def find_command(args)
+      args
         .size
         .downto(1) do |i|
-          name = argv.take(i).join(' ')
+          name = args.take(i).join(' ')
           cmd = @commands.find { |command| command.name == name } or next
-          argv.shift(i)
-          return cmd
+          return cmd, i
         end
       nil
     end
@@ -137,7 +182,7 @@ module ParseArgv
     end
 
     def command
-      @command || raise(UsageLineMissingError)
+      @command || raise(UsageLineMissingError, @line_number)
     end
 
     def option(match)
@@ -161,6 +206,10 @@ module ParseArgv
     def new_command(match)
       name = match[1].rstrip
       @help = [] unless @commands.empty?
+      @commands.find do |cmd|
+        next if cmd.name != name
+        raise(DoublicateCommandDefinitionError.new(name, @line_number))
+      end
       @command = CommandParser.new(name, @help)
       define_arguments(@command, match.post_match)
       @commands << @command
@@ -176,17 +225,55 @@ module ParseArgv
   end
 
   class Command
-    attr_reader :name
+    attr_reader :full_name, :name
 
     def initialize(name, help)
-      @name = name
+      @full_name = name.freeze
+      @name = +@full_name
       @help = help
     end
 
     def help
       return @help if @help.is_a?(String)
+      @help.shift while @help.first.empty?
       @help.pop while @help.last.empty?
       @help = @help.join("\n").freeze
+    end
+
+    alias to_s help
+  end
+
+  class AllCommands
+    def initialize(commands)
+      @commands = commands
+    end
+
+    def main
+      @commands.first
+    end
+
+    def names
+      @commands.map(&:name)
+    end
+
+    def each(&block)
+      @commands.each(&block)
+    end
+
+    def find(name)
+      name = name.is_a?(Array) ? name.join(' ') : name.to_s
+      @commands.find { |cmd| cmd.name == name }
+    end
+
+    def inspect
+      "#{__to_s[..-2]} #{self}>"
+    end
+
+    alias __to_s to_s
+    private :__to_s
+
+    def to_s
+      names.inspect
     end
   end
 
@@ -221,10 +308,11 @@ module ParseArgv
     end
 
     def to_result(argv, all_commands)
-      Result.new(name, help, parse(argv), all_commands)
+      argv = parse(argv)
+      Result.new(to_cmd, AllCommands.new(all_commands), argv)
     end
 
-    def simplify
+    def to_cmd
       Command.new(@name, @help)
     end
 
@@ -246,11 +334,11 @@ module ParseArgv
         when '--'
           return arguments + argv
         when /\A--([[[:alnum:]]-]+)\z/
-          handle_option(Regexp.last_match[1], argv)
+          process_option(Regexp.last_match[1], argv)
         when /\A-{1,2}([[[:alnum:]]-]+):(.+)\z/
-          handle_option_arg(Regexp.last_match)
+          process_option_arg(Regexp.last_match)
         when /\A-([[:alnum:]]+)\z/
-          handle_opts(Regexp.last_match[1], argv)
+          process_opts(Regexp.last_match[1], argv)
         else
           arguments << arg
         end
@@ -289,7 +377,7 @@ module ParseArgv
       end
     end
 
-    def handle_option(name, argv, pref = '-')
+    def process_option(name, argv, pref = '-')
       key = @options[name]
       raise(UnknonwOptionError.new(@name, "#{pref}-#{name}")) if key.nil?
       return @result[key[1..].to_sym] = true if key[0] == '!'
@@ -298,15 +386,15 @@ module ParseArgv
       raise(OptionArgumentMissingError.new(@name, key, "#{pref}-#{name}"))
     end
 
-    def handle_option_arg(match)
+    def process_option_arg(match)
       key = @options[match[1]] or
         raise(UnknonwOptionError.new(@name, "#{match.pre_match}#{match[1]}"))
       return @result[key[1..].to_sym] = as_boolean(match[2]) if key[0] == '!'
       @result[key.to_sym] = match[2]
     end
 
-    def handle_opts(name, argv)
-      name.each_char { |n| handle_option(n, argv, nil) }
+    def process_opts(name, argv)
+      name.each_char { |n| process_option(n, argv, nil) }
     end
 
     def process_switches
@@ -323,17 +411,28 @@ module ParseArgv
   end
 
   class Result
-    attr_reader :command_name, :help_text, :all_commands
+    attr_reader :_command, :all_commands
 
-    def initialize(command_name, help_text, args, all_commands)
-      @command_name = command_name
-      @help_text = help_text
-      @args = args
+    def initialize(command, all_commands, args)
+      @_command = command
       @all_commands = all_commands
+      @args = args
+    end
+
+    def command_name
+      @_command.name
+    end
+
+    def help_text
+      @_command.help
     end
 
     def member?(name)
       @args.key?(name.to_sym)
+    end
+
+    def [](name)
+      @args[name.to_sym]
     end
 
     def to_h
@@ -346,14 +445,14 @@ module ParseArgv
     end
 
     def inspect
-      "#{__to_s[..-2]}:#{@command} #{
+      "#{__to_s[..-2]}:#{@_command.full_name} #{
         @args.map { |k, v| "#{k}: #{v}" }.join(', ')
       }>"
     end
 
     alias __to_s to_s
-    alias to_s help_text
     private :__to_s
+    alias to_s help_text
 
     private
 

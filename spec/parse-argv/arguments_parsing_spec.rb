@@ -2,23 +2,23 @@
 
 require_relative '../helper'
 
-RSpec.describe 'simple command arguments handling' do
+RSpec.describe 'arguments parsing' do
   subject(:result) { ParseArgv.from(help_text, argv) }
 
   let(:help_text) { <<~HELP }
-    Usage: simple [options] <input> [<output>]
-
     This is a demo for the command 'simple', which accepts some options, an
     optional <input> name and a required <output> name.
+
+    Usage: simple [options] <input> [<output>]
+
+    Options need not to be defined in one paragraph, multiple definitions are
+    allowed.
 
     Options:
       -s, --switch         defines a (boolean) switch named 'switch'
       -n, --next           defines a (boolean) switch named 'next'
       -o, --opt <option>   defines an option named 'option'
       -p, --pref <prefix>  defines an option named 'prefix'
-
-    Options need not to be defined in one paragraph, multiple definitions are
-    allowed.
 
     There are two special switches for simple commands, which prevent
     further parameter parsing to prefer handling of 'help' and 'version' as a
@@ -90,11 +90,11 @@ RSpec.describe 'simple command arguments handling' do
 
     context 'attributes' do
       it 'has correct command name' do
-        expect(result.command_name).to eq 'simple'
+        expect(result._command.name).to eq 'simple'
       end
 
       it 'has related help text' do
-        expect(result.help_text).to eq help_text.chomp
+        expect(result._command.help).to eq help_text.chomp
       end
 
       it 'defines custom attributes' do
