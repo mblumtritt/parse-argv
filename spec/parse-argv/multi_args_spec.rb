@@ -70,9 +70,9 @@ RSpec.describe 'multi-command arguments handling' do
     it 'returns all commands' do
       expect(result.all_commands.map(&:name)).to eq [
            'multi',
-           'multi foo',
-           'multi foo bar',
-           'multi help'
+           'foo',
+           'foo bar',
+           'help'
          ]
     end
   end
@@ -94,7 +94,7 @@ RSpec.describe 'multi-command arguments handling' do
     let(:argv) { %w[foo -s -o opt arg1] }
 
     it 'returns the sub-command' do
-      expect(result.command_name).to eq 'multi foo'
+      expect(result.command_name).to eq 'foo'
     end
 
     it 'returns correct options' do
@@ -108,7 +108,7 @@ RSpec.describe 'multi-command arguments handling' do
     let(:argv) { %w[foo bar -s -o opt arg1] }
 
     it 'returns the sub-command' do
-      expect(result.command_name).to eq 'multi foo bar'
+      expect(result.command_name).to eq 'foo bar'
     end
 
     it 'returns correct options' do
@@ -122,7 +122,7 @@ RSpec.describe 'multi-command arguments handling' do
     let(:argv) { %w[help] }
 
     it 'returns the sub-command' do
-      expect(result.command_name).to eq 'multi help'
+      expect(result.command_name).to eq 'help'
     end
 
     it 'returns correct options' do
@@ -134,7 +134,7 @@ RSpec.describe 'multi-command arguments handling' do
     let(:argv) { %w[help foo bar] }
 
     it 'returns the sub-command' do
-      expect(result.command_name).to eq 'multi help'
+      expect(result.command_name).to eq 'help'
     end
 
     it 'returns correct options' do
