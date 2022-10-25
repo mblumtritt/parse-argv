@@ -66,15 +66,6 @@ RSpec.describe 'subcommands' do
       expect(result.help?).to be true
       expect(result.version?).to be false
     end
-
-    it 'returns all commands' do
-      expect(result.all_commands.names).to eq [
-           'multi',
-           'foo',
-           'foo bar',
-           'help'
-         ]
-    end
   end
 
   context 'main: multi --version' do
@@ -139,6 +130,33 @@ RSpec.describe 'subcommands' do
 
     it 'returns correct arguments' do
       expect(result.command).to eq %w[foo bar]
+    end
+  end
+
+  context '#all_commands' do
+    let(:argv) { %w[help] }
+
+    it 'returns the main command' do
+      expect(result.all_commands.main.name).to eq 'multi'
+    end
+
+    it 'returns all command names' do
+      expect(result.all_commands.names).to eq(
+        ['multi', 'foo', 'foo bar', 'help']
+      )
+    end
+
+    it 'allows to iterate over all commands' do
+      expect(result.all_commands.each.to_a.map!(&:full_name)).to eq(
+        ['multi', 'multi foo', 'multi foo bar', 'multi help']
+      )
+    end
+
+    it 'allows to find a command' do
+      expect(result.all_commands.find('foo bar').full_name).to eq(
+        'multi foo bar'
+      )
+      expect(result.all_commands.find('evil')).to be_nil
     end
   end
 end
