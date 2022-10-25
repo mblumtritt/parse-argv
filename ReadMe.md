@@ -17,15 +17,15 @@ This is a very early stage of the gem which means that some stuff is missing/jus
 
 Planned extensions are missing:
 
-- extend tests
-- support argument conversion; not decided yet how to integrate it
-- add YARD documentation
-- add examples
+- [ ]  extend tests
+- [ ]  support argument conversion; not decided yet how to integrate it
+- [ ]  add YARD documentation
+- [ ]  add examples
 
 <!-- ## Sample
 
-For more samples see [the examples dir](./examples)
- -->
+For more samples see the [`./examples`](./examples) directory. -->
+
 ## Installation
 
 Use [Bundler](http://gembundler.com/) to add ParseArgv in your own project:
