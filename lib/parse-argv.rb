@@ -5,7 +5,8 @@ module ParseArgv
     attr_reader :command
 
     def initialize(command, message)
-      super("#{@command = command}: #{message}")
+      @command = command
+      super("#{command.full_name}: #{message}")
     end
   end
 
@@ -94,7 +95,7 @@ module ParseArgv
     @on_error = block
   end
 
-  @on_error = ->(e) { $stderr.puts(e) or exit(1) }
+  @on_error = ->(e) { $stderr.puts e or exit 1 }
 
   class Assembler
     def self.call(help_text, argv)
@@ -141,7 +142,7 @@ module ParseArgv
     def as_result(argv, found, default = found)
       found.to_result(
         argv,
-        @commands.map!(&:to_cmd).sort_by(&:name).unshift(default)
+        @commands.map!(&:to_cmd).sort_by(&:name).unshift(default.to_cmd)
       )
     end
 
@@ -149,9 +150,7 @@ module ParseArgv
       prepare_subcommands(default)
       args = argv.take_while { |arg| arg[0] != '-' }
       found, prefix = args.empty? ? default : find_command(args)
-      if found.nil?
-        raise(InvalidCommandError.new(default.full_name, args.first))
-      end
+      raise(InvalidCommandError.new(default, args.first)) if found.nil?
       argv.shift(prefix) if prefix
       as_result(argv, found, default)
     end
@@ -168,7 +167,7 @@ module ParseArgv
     end
 
     def prepare_subcommands(default)
-      prefix = "#{default.name} "
+      prefix = "#{default.full_name} "
       @commands.each do |cmd|
         next cmd.name.delete_prefix!(prefix) if cmd.name.start_with?(prefix)
         raise(InvalidSubcommandNameError.new(default.name, cmd.name))
@@ -227,9 +226,9 @@ module ParseArgv
   class Command
     attr_reader :full_name, :name
 
-    def initialize(name, help)
+    def initialize(name, help, short = nil)
       @full_name = name.freeze
-      @name = +@full_name
+      @name = short || +@full_name
       @help = help
     end
 
@@ -240,6 +239,12 @@ module ParseArgv
       @help = @help.join("\n").freeze
     end
 
+    def inspect
+      "#{__to_s[..-2]} #{@full_name}>"
+    end
+
+    alias __to_s to_s
+    private :__to_s
     alias to_s help
   end
 
@@ -309,11 +314,12 @@ module ParseArgv
 
     def to_result(argv, all_commands)
       argv = parse(argv)
-      Result.new(to_cmd, AllCommands.new(all_commands), argv)
+      me = all_commands.find { |cmd| cmd.full_name == @full_name }
+      Result.new(me, AllCommands.new(all_commands), argv)
     end
 
     def to_cmd
-      Command.new(@name, @help)
+      Command.new(@full_name, @help, @name)
     end
 
     private
@@ -355,13 +361,13 @@ module ParseArgv
         when 'oa'
           argv.shift(argv.size) unless argv.empty?
         when 'rs'
-          argv.shift or raise(ArgumentMissingError.new(@name, key))
+          argv.shift or raise(ArgumentMissingError.new(self, key))
         when 'ra'
-          raise(ArgumentMissingError.new(@name, key)) if argv.empty?
+          raise(ArgumentMissingError.new(self, key)) if argv.empty?
           argv.shift(argv.size)
         end
       end
-      raise(TooManyArgumentsError, @name) unless argv.empty?
+      raise(TooManyArgumentsError, self) unless argv.empty?
     end
 
     def argument_results(args)
@@ -373,22 +379,22 @@ module ParseArgv
       while argv.size < @arguments.size
         nonreq = keys.find { |key| @arguments[key][0] == 'o' }
         next @arguments.delete(keys.delete(nonreq)) if nonreq
-        raise(ArgumentMissingError.new(@name, @arguments.keys.last))
+        raise(ArgumentMissingError.new(self, @arguments.keys.last))
       end
     end
 
     def process_option(name, argv, pref = '-')
       key = @options[name]
-      raise(UnknonwOptionError.new(@name, "#{pref}-#{name}")) if key.nil?
+      raise(UnknonwOptionError.new(self, "#{pref}-#{name}")) if key.nil?
       return @result[key[1..].to_sym] = true if key[0] == '!'
       @result[key.to_sym] = value = argv.shift
       return unless value.nil? || value[0] == '-'
-      raise(OptionArgumentMissingError.new(@name, key, "#{pref}-#{name}"))
+      raise(OptionArgumentMissingError.new(self, key, "#{pref}-#{name}"))
     end
 
     def process_option_arg(match)
       key = @options[match[1]] or
-        raise(UnknonwOptionError.new(@name, "#{match.pre_match}#{match[1]}"))
+        raise(UnknonwOptionError.new(self, "#{match.pre_match}#{match[1]}"))
       return @result[key[1..].to_sym] = as_boolean(match[2]) if key[0] == '!'
       @result[key.to_sym] = match[2]
     end
