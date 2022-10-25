@@ -90,7 +90,7 @@ RSpec.describe 'arguments parsing' do
 
     context 'attributes' do
       it 'has correct command name' do
-        expect(result._command.name).to eq 'simple'
+        expect(result.command_name).to eq 'simple'
       end
 
       it 'has related help text' do

@@ -59,7 +59,7 @@ RSpec.describe 'subcommands' do
     let(:argv) { %w[-h] }
 
     it 'returns the main command' do
-      expect(result._command.name).to eq 'multi'
+      expect(result.command_name).to eq 'multi'
     end
 
     it 'returns correct options' do
@@ -81,7 +81,7 @@ RSpec.describe 'subcommands' do
     let(:argv) { %w[-v] }
 
     it 'returns the main command' do
-      expect(result._command.name).to eq 'multi'
+      expect(result.command_name).to eq 'multi'
     end
 
     it 'returns correct options' do
@@ -94,7 +94,7 @@ RSpec.describe 'subcommands' do
     let(:argv) { %w[foo -s -o opt arg1] }
 
     it 'returns the sub-command' do
-      expect(result._command.name).to eq 'foo'
+      expect(result.command_name).to eq 'foo'
     end
 
     it 'returns correct options' do
@@ -108,7 +108,7 @@ RSpec.describe 'subcommands' do
     let(:argv) { %w[foo bar -s -o opt arg1] }
 
     it 'returns the sub-command' do
-      expect(result._command.name).to eq 'foo bar'
+      expect(result.command_name).to eq 'foo bar'
     end
 
     it 'returns correct options' do
@@ -122,7 +122,7 @@ RSpec.describe 'subcommands' do
     let(:argv) { %w[help] }
 
     it 'returns the sub-command' do
-      expect(result._command.name).to eq 'help'
+      expect(result.command_name).to eq 'help'
     end
 
     it 'returns correct arguments' do
@@ -134,7 +134,7 @@ RSpec.describe 'subcommands' do
     let(:argv) { %w[help foo bar] }
 
     it 'returns the sub-command' do
-      expect(result._command.name).to eq 'help'
+      expect(result.command_name).to eq 'help'
     end
 
     it 'returns correct arguments' do
