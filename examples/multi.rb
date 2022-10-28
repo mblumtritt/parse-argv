@@ -3,6 +3,7 @@
 require_relative '../lib/parse-argv'
 
 Argv = ParseArgv.from(<<~HELP)
+
   ParseArgv Demo for a CLI with subcommands
   This example demonstrates a CLI with subcommands. It processes an imganinary
   key/value store that can be synchronized with a server.
@@ -55,6 +56,7 @@ Argv = ParseArgv.from(<<~HELP)
   usage: multi help [<command>...]
 
   Show help for given <command>.
+
 HELP
 
 case Argv.command_name

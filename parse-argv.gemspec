@@ -9,13 +9,13 @@ Gem::Specification.new do |spec|
   spec.description = <<~DESCRIPTION
     Just write the help text for your application and ParseArgv will take care
     of the command line for you. It's kind of the reverse of OptParse, where
-    you code a lot to get a parser with help text support.
+    you code a lot to get a command line parser with help text support.
     ParseArgv works for simple commands, as well as for CLI with subcommands
     (git-like apps).
   DESCRIPTION
 
   spec.author = 'Mike Blumtritt'
-  # spec.license = 'BSD-3-Clause'
+  spec.license = 'BSD-3-Clause'
   spec.homepage = 'https://github.com/mblumtritt/parse-argv'
   spec.metadata['source_code_uri'] = spec.homepage
   spec.metadata['bug_tracker_uri'] = "#{spec.homepage}/issues"

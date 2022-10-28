@@ -84,6 +84,12 @@ module ParseArgv
     end
   end
 
+  class UnknownAttribute < ArgumentError
+    def initialize(name)
+      super("unknown attribute - #{name}")
+    end
+  end
+
   def self.from(help_text, argv = ARGV)
     command = Assembler.call(help_text, argv)
     block_given? ? yield(command) : command
@@ -94,8 +100,6 @@ module ParseArgv
   def self.on_error(&block)
     @on_error = block
   end
-
-  @on_error = ->(e) { $stderr.puts e or exit 1 }
 
   class Assembler
     def self.call(help_text, argv)
@@ -217,10 +221,20 @@ module ParseArgv
     def define_arguments(parser, str)
       return if str.empty?
       str.scan(/(\[?<([[:alnum:]]+)>(\.{3})?\]?)/) do |(all, name, cons)|
-        type = all[0] == '[' ? 'o' : 'r'
-        parser.argument(name.to_sym, type + (cons.nil? ? 's' : 'a'))
+        parser.argument(name.to_sym, ARGTYPE[all[0] == '['][cons.nil?])
       end
     end
+
+    ARGTYPE = {
+      true => {
+        true => :optional_single,
+        false => :optional_consume
+      }.compare_by_identity,
+      false => {
+        true => :required_single,
+        false => :required_consume
+      }.compare_by_identity
+    }.compare_by_identity
   end
 
   class Command
@@ -246,40 +260,6 @@ module ParseArgv
     alias __to_s to_s
     private :__to_s
     alias to_s help
-  end
-
-  class AllCommands
-    def initialize(commands)
-      @commands = commands
-    end
-
-    def main
-      @commands.first
-    end
-
-    def names
-      @commands.map(&:name)
-    end
-
-    def each(&block)
-      @commands.each(&block)
-    end
-
-    def find(name)
-      name = name.is_a?(Array) ? name.join(' ') : name.to_s
-      @commands.find { |cmd| cmd.name == name }
-    end
-
-    def inspect
-      "#{__to_s[..-2]} #{self}>"
-    end
-
-    alias __to_s to_s
-    private :__to_s
-
-    def to_s
-      names.inspect
-    end
   end
 
   class CommandParser < Command
@@ -356,13 +336,13 @@ module ParseArgv
       reduce(argv)
       @arguments.each_pair do |key, type|
         @result[key] = case type
-        when 'os'
+        when :optional_single
           argv.shift unless argv.empty?
-        when 'oa'
+        when :optional_consume
           argv.shift(argv.size) unless argv.empty?
-        when 'rs'
+        when :required_single
           argv.shift or raise(ArgumentMissingError.new(self, key))
-        when 'ra'
+        when :required_consume
           raise(ArgumentMissingError.new(self, key)) if argv.empty?
           argv.shift(argv.size)
         end
@@ -416,6 +396,41 @@ module ParseArgv
     end
   end
 
+  class AllCommands
+    def initialize(commands)
+      @commands = commands
+    end
+
+    def main
+      @commands.first
+    end
+
+    def names
+      @commands.map(&:name)
+    end
+
+    def each(&block)
+      @commands.each(&block)
+    end
+
+    def find(name)
+      return if name.nil?
+      name = name.is_a?(Array) ? name.join(' ') : name.to_s
+      @commands.find { |cmd| cmd.name == name }
+    end
+
+    def inspect
+      "#{__to_s[..-2]} #{self}>"
+    end
+
+    alias __to_s to_s
+    private :__to_s
+
+    def to_s
+      names.inspect
+    end
+  end
+
   class Result
     attr_reader :_command, :all_commands
 
@@ -436,9 +451,15 @@ module ParseArgv
     def member?(name)
       @args.key?(name.to_sym)
     end
+    alias exist? member?
 
     def [](name)
       @args[name.to_sym]
+    end
+
+    def fetch(name, *args, &block)
+      block ||= proc { |name| raise(UnknownAttribute, name) }
+      @args.fetch(name.to_sym, *args, &block)
     end
 
     def to_h
@@ -469,5 +490,6 @@ module ParseArgv
     end
   end
 
+  @on_error = ->(e) { $stderr.puts e or exit 1 }
   private_constant(*(constants - [:Error]))
 end
