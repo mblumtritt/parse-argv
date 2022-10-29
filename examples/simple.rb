@@ -26,8 +26,8 @@ Play with different command line parameters and options to see how it works!
 
 HELP
   puts(args) or exit if args.help?
-  puts("#{args.command_name} v1.0.0") or exit if args.version?
-  puts("#{args.command_name}:")
+  puts("#{args.current_command.name} v1.0.0") or exit if args.version?
+  puts("#{args.current_command.name}:")
   attributes = args.to_h
   width = attributes.keys.max_by(&:size).size + 3
   attributes.each_pair do |name, value|

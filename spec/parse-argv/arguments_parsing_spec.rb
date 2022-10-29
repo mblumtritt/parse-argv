@@ -88,19 +88,9 @@ RSpec.describe 'arguments parsing' do
       end
     end
 
-    context 'attributes' do
-      it 'has correct command name' do
-        expect(result.command_name).to eq 'simple'
-      end
-
-      it 'has related help text' do
-        expect(result._command.help).to eq help_text.chomp
-      end
-
-      it 'defines custom attributes' do
-        expect(result.input).to eq 'input_arg'
-        expect(result.switch?).to be false
-      end
+    it 'defines custom attributes' do
+      expect(result.input).to eq 'input_arg'
+      expect(result.switch?).to be false
     end
 
     it 'can be converted to Hash' do

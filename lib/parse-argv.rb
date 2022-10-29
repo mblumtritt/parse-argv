@@ -114,7 +114,7 @@ module ParseArgv
         @line_number += 1
         case line
         when /usage: (\w+([ \w]+)?)/i
-          new_command(Regexp.last_match)
+          newcurrent_command(Regexp.last_match)
         when /\A\s+-([[:alnum:]]), --([[[:alnum:]]-]+)[ :]<([[:lower:]]+)>\s+\S+/
           option(Regexp.last_match)
         when /\A\s+-{1,2}([[[:alnum:]]-]+)[ :]<([[:lower:]]+)>\s+\S+/
@@ -131,32 +131,22 @@ module ParseArgv
 
     def command_from(argv)
       raise(NoCommandDefinedError, @line_number) if @commands.empty?
-      default = extract_default_command
-      if @commands.empty?
-        default.to_result(argv, [default.to_cmd].freeze)
-      elsif argv.empty?
-        as_result(argv, default)
-      else
-        sub_command_from(default, argv)
+      main = main_command
+      if argv.empty? || @commands.empty?
+        return Result.new(main, main, @commands, argv)
       end
+      sub_command_from(main, argv)
     end
 
     private
 
-    def as_result(argv, found, default = found)
-      found.to_result(
-        argv,
-        @commands.map!(&:to_cmd).sort_by(&:name).unshift(default.to_cmd)
-      )
-    end
-
-    def sub_command_from(default, argv)
-      prepare_subcommands(default)
+    def sub_command_from(main, argv)
+      prepare_subcommands(main)
       args = argv.take_while { |arg| arg[0] != '-' }
-      found, prefix = args.empty? ? default : find_command(args)
-      raise(InvalidCommandError.new(default, args.first)) if found.nil?
+      found, prefix = args.empty? ? main : find_command(args)
+      raise(InvalidCommandError.new(main, args.first)) if found.nil?
       argv.shift(prefix) if prefix
-      as_result(argv, found, default)
+      Result.new(found, main, @commands, argv)
     end
 
     def find_command(args)
@@ -170,18 +160,18 @@ module ParseArgv
       nil
     end
 
-    def prepare_subcommands(default)
-      prefix = "#{default.full_name} "
+    def prepare_subcommands(main)
+      prefix = "#{main.full_name} "
       @commands.each do |cmd|
         next cmd.name.delete_prefix!(prefix) if cmd.name.start_with?(prefix)
-        raise(InvalidSubcommandNameError.new(default.name, cmd.name))
+        raise(InvalidSubcommandNameError.new(main.name, cmd.name))
       end
     end
 
-    def extract_default_command
-      default = @commands.find { |cmd| cmd.name.index(' ').nil? }
-      raise(NoDefaultCommandDefinedError) if default.nil?
-      @commands.delete(default)
+    def main_command
+      main = @commands.find { |cmd| cmd.name.index(' ').nil? }
+      raise(NoDefaultCommandDefinedError) if main.nil?
+      @commands.delete(main)
     end
 
     def command
@@ -206,7 +196,7 @@ module ParseArgv
       command.switch(name, name)
     end
 
-    def new_command(match)
+    def newcurrent_command(match)
       name = match[1].rstrip
       @help = [] unless @commands.empty?
       @commands.find do |cmd|
@@ -262,6 +252,41 @@ module ParseArgv
     alias to_s help
   end
 
+  class CommandCollection
+    attr_reader :current, :main
+
+    def initialize(all, current, main)
+      @ll = all
+      @current = all.find { |c| c.full_name == current }
+      @main = current == main ? @current : all.find { |c| c.full_name == main }
+    end
+
+    def names
+      @ll.map(&:name)
+    end
+
+    def find(name)
+      return if name.nil?
+      name = name.is_a?(Array) ? name.join(' ') : name.to_s
+      @ll.find { |cmd| cmd.name == name }
+    end
+
+    def to_a
+      Array.new(@ll)
+    end
+
+    def inspect
+      "#{__to_s[..-2]} #{self}>"
+    end
+
+    alias __to_s to_s
+    private :__to_s
+
+    def to_s
+      names.inspect
+    end
+  end
+
   class CommandParser < Command
     def initialize(name, help)
       super
@@ -290,12 +315,6 @@ module ParseArgv
       process_switches
       process(arguments) unless help?
       @result
-    end
-
-    def to_result(argv, all_commands)
-      argv = parse(argv)
-      me = all_commands.find { |cmd| cmd.full_name == @full_name }
-      Result.new(me, AllCommands.new(all_commands), argv)
     end
 
     def to_cmd
@@ -396,56 +415,17 @@ module ParseArgv
     end
   end
 
-  class AllCommands
-    def initialize(commands)
-      @commands = commands
-    end
-
-    def main
-      @commands.first
-    end
-
-    def names
-      @commands.map(&:name)
-    end
-
-    def each(&block)
-      @commands.each(&block)
-    end
-
-    def find(name)
-      return if name.nil?
-      name = name.is_a?(Array) ? name.join(' ') : name.to_s
-      @commands.find { |cmd| cmd.name == name }
-    end
-
-    def inspect
-      "#{__to_s[..-2]} #{self}>"
-    end
-
-    alias __to_s to_s
-    private :__to_s
-
-    def to_s
-      names.inspect
-    end
-  end
-
   class Result
-    attr_reader :_command, :all_commands
+    attr_reader :all_commands
 
-    def initialize(command, all_commands, args)
-      @_command = command
-      @all_commands = all_commands
-      @args = args
-    end
-
-    def command_name
-      @_command.name
-    end
-
-    def help_text
-      @_command.help
+    def initialize(command, main_command, other, argv)
+      @args = command.parse(argv)
+      @all_commands =
+        CommandCollection.new(
+          (other << main_command).map!(&:to_cmd).sort_by(&:name).freeze,
+          command.full_name,
+          main_command.full_name
+        )
     end
 
     def member?(name)
@@ -472,14 +452,17 @@ module ParseArgv
     end
 
     def inspect
-      "#{__to_s[..-2]}:#{@_command.full_name} #{
+      "#{__to_s[..-2]}:#{@current_command.full_name} #{
         @args.map { |k, v| "#{k}: #{v}" }.join(', ')
       }>"
     end
 
     alias __to_s to_s
     private :__to_s
-    alias to_s help_text
+
+    def to_s
+      @all_commands.current.help
+    end
 
     private
 
@@ -491,5 +474,5 @@ module ParseArgv
   end
 
   @on_error = ->(e) { $stderr.puts e or exit 1 }
-  private_constant(*(constants - [:Error]))
+  private_constant(*(constants - %i[Error Command CommandCollection Result]))
 end

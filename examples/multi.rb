@@ -59,9 +59,9 @@ Argv = ParseArgv.from(<<~HELP)
 
 HELP
 
-case Argv.command_name
+case Argv.current_command.name
 when 'multi'
-  puts(Argv.help? ? Argv : "#{Argv.command_name} v1.0.0")
+  puts(Argv.help? ? Argv : "#{Argv.current_command.name} v1.0.0")
 when 'help'
   command =
     if Argv.member?(:command)
@@ -73,7 +73,7 @@ when 'help'
   warn("unknown command - #{Argv.command.join(' ')}")
   exit(1)
 else
-  puts "command '#{Argv.command_name}':"
+  puts "command '#{Argv.current_command.name}':"
   attributes = Argv.to_h
   unless attributes.empty?
     width = attributes.keys.max_by(&:size).size + 3

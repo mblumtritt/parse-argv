@@ -171,7 +171,7 @@ RSpec.describe 'command parsing' do
       This is the footer text.
     HELP
 
-    it 'collects the help header text' do
+    it 'includes the help header text' do
       expect(ParseArgv.from(help_text, %w[]).to_s).to eq help_text.chomp
     end
   end
