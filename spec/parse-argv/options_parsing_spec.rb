@@ -137,7 +137,7 @@ RSpec.describe 'command parsing' do
       usage: test
         -s, --switch   a switch
         -s, --stop     another switch
-      HELP
+    HELP
 
     it 'raises an error' do
       expect { ParseArgv.from(help_text, []) }.to raise_error(

@@ -133,9 +133,10 @@ module ParseArgv
       raise(NoCommandDefinedError, @line_number) if @commands.empty?
       main = main_command
       if argv.empty? || @commands.empty?
-        return Result.new(main, main, @commands, argv)
+        Result.new(main, main, @commands, argv)
+      else
+        sub_command_from(main, argv)
       end
-      sub_command_from(main, argv)
     end
 
     private
@@ -438,7 +439,7 @@ module ParseArgv
     end
 
     def fetch(name, *args, &block)
-      block ||= proc { |name| raise(UnknownAttribute, name) }
+      block ||= proc { |key| raise(UnknownAttribute, key) }
       @args.fetch(name.to_sym, *args, &block)
     end
 
