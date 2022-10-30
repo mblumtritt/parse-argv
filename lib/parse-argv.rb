@@ -97,8 +97,8 @@ module ParseArgv
     @on_error&.call(e) or raise
   end
 
-  def self.on_error(&block)
-    @on_error = block
+  def self.on_error(func = nil, &block)
+    @on_error = func || block
   end
 
   class Assembler
@@ -429,6 +429,10 @@ module ParseArgv
         )
     end
 
+    def current_command
+      @all_commands.current
+    end
+
     def member?(name)
       @args.key?(name.to_sym)
     end
@@ -441,6 +445,11 @@ module ParseArgv
     def fetch(name, *args, &block)
       block ||= proc { |key| raise(UnknownAttribute, key) }
       @args.fetch(name.to_sym, *args, &block)
+    end
+
+    def error!(message, code = 1)
+      $stderr.puts("#{current_command.full_name}: #{message}")
+      exit(code)
     end
 
     def to_h

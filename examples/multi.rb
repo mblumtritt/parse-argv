@@ -61,7 +61,7 @@ HELP
 
 case Argv.current_command.name
 when 'multi'
-  puts(Argv.help? ? Argv : "#{Argv.current_command.name} v1.0.0")
+  puts(Argv.help? ? Argv : 'multi sample v1.0.0')
 when 'help'
   command =
     if Argv.member?(:command)
@@ -69,9 +69,8 @@ when 'help'
     else
       Argv.all_commands.main
     end
-  puts(command) or exit if command
-  warn("unknown command - #{Argv.command.join(' ')}")
-  exit(1)
+  Argv.error!("unknown command - #{Argv.command.join(' ')}") if command.nil?
+  puts(command)
 else
   puts "command '#{Argv.current_command.name}':"
   attributes = Argv.to_h
