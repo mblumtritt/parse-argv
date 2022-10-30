@@ -4,8 +4,8 @@ source 'https://rubygems.org'
 
 group :development, :test do
   gem 'bundler'
-  gem 'rake'
   gem 'prettier'
+  gem 'rake'
 end
 
 # group :development do

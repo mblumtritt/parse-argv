@@ -22,6 +22,12 @@ module ParseArgv
     end
   end
 
+  class InvalidArgumentType < Error
+    def initialize(command, message, name)
+      super(command, "#{message} - <#{name}>")
+    end
+  end
+
   class TooManyArgumentsError < Error
     def initialize(command)
       super(command, 'too many arguments')
@@ -90,6 +96,12 @@ module ParseArgv
     end
   end
 
+  class UnknownAttributeConverter < ArgumentError
+    def initialize(name)
+      super("unknown attribute converter - #{name}")
+    end
+  end
+
   def self.from(help_text, argv = ARGV)
     command = Assembler.call(help_text, argv)
     block_given? ? yield(command) : command
@@ -109,10 +121,15 @@ module ParseArgv
     def parse(help_text)
       @commands = []
       @help = []
+      @header_text = true
       @line_number = 0
       help_text.each_line(chomp: true) do |line|
         @line_number += 1
         case line
+        when /\A\s*#/
+          @help = ['']
+          @header_text = true
+          next
         when /usage: (\w+([ \w]+)?)/i
           newcurrent_command(Regexp.last_match)
         when /\A\s+-([[:alnum:]]), --([[[:alnum:]]-]+)[ :]<([[:lower:]]+)>\s+\S+/
@@ -199,7 +216,8 @@ module ParseArgv
 
     def newcurrent_command(match)
       name = match[1].rstrip
-      @help = [] unless @commands.empty?
+      @help = [] unless @header_text
+      @header_text = false
       @commands.find do |cmd|
         next if cmd.name != name
         raise(DoublicateCommandDefinitionError.new(name, @line_number))
@@ -420,7 +438,7 @@ module ParseArgv
     attr_reader :all_commands
 
     def initialize(command, main_command, other, argv)
-      @args = command.parse(argv)
+      @rgs = command.parse(argv)
       @all_commands =
         CommandCollection.new(
           (other << main_command).map!(&:to_cmd).sort_by(&:name).freeze,
@@ -434,17 +452,26 @@ module ParseArgv
     end
 
     def member?(name)
-      @args.key?(name.to_sym)
+      @rgs.key?(name.to_sym)
     end
     alias exist? member?
 
     def [](name)
-      @args[name.to_sym]
+      @rgs[name.to_sym]
+    end
+
+    def as(type, name, *args)
+      value = @rgs[name.to_sym] or return
+      error =
+        proc do |message|
+          raise(InvalidArgumentType.new(current_command, message, name))
+        end
+      Conversion.for(type).call(value, *args, &error)
     end
 
     def fetch(name, *args, &block)
       block ||= proc { |key| raise(UnknownAttribute, key) }
-      @args.fetch(name.to_sym, *args, &block)
+      @rgs.fetch(name.to_sym, *args, &block)
     end
 
     def error!(message, code = 1)
@@ -453,17 +480,17 @@ module ParseArgv
     end
 
     def to_h
-      Hash[@args.to_a] # create a copy without compare_by_identity
+      Hash[@rgs.to_a] # create a copy without compare_by_identity
     end
     alias to_hash to_h
 
     def respond_to_missing?(sym, _)
-      @args.key?(sym) || super
+      @rgs.key?(sym) || super
     end
 
     def inspect
       "#{__to_s[..-2]}:#{@current_command.full_name} #{
-        @args.map { |k, v| "#{k}: #{v}" }.join(', ')
+        @rgs.map { |k, v| "#{k}: #{v}" }.join(', ')
       }>"
     end
 
@@ -477,12 +504,15 @@ module ParseArgv
     private
 
     def method_missing(sym, *_)
-      return @args.key?(sym) ? @args[sym] : super unless sym.end_with?('?')
+      return @rgs.key?(sym) ? @rgs[sym] : super unless sym.end_with?('?')
       sym = sym[0..-2].to_sym
-      @args.key?(sym) ? @args[sym] == true : super
+      @rgs.key?(sym) ? @rgs[sym] == true : super
     end
   end
 
   @on_error = ->(e) { $stderr.puts e or exit 1 }
-  private_constant(*(constants - %i[Error Command CommandCollection Result]))
+  autoload(:Conversion, File.expand_path('./parse-argv/conversion', __dir__))
+  private_constant(
+    *(constants - %i[Error Command CommandCollection Result Conversion])
+  )
 end

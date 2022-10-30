@@ -2,7 +2,7 @@
 
 require_relative '../lib/parse-argv'
 
-Argv = ParseArgv.from(<<~HELP)
+Argv = ParseArgv.from <<~HELP
 
   ParseArgv Demo for a CLI with subcommands
   This example demonstrates a CLI with subcommands. It processes an imganinary

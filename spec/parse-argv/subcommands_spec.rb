@@ -23,6 +23,10 @@ RSpec.describe 'subcommands' do
 
     Use `multi help <command>` to get command specific help
 
+    ############################################################################
+
+    Header text for command foo.
+
     Usage: multi foo [options] <parameter>
 
     This is the 'foo' command. Notice there is a `foo bar` sub-command.
@@ -30,6 +34,8 @@ RSpec.describe 'subcommands' do
     Options:
       -s, --switch             simpe switch (boolean option)
       -o, --option <option>    option with parameter
+
+    ############################################################################
 
     Usage: multi foo bar [options] [<files>...]
 
