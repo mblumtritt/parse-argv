@@ -24,7 +24,7 @@ module ParseArgv
       end
 
       def one_of(ary)
-        proc do |arg, &err|
+        proc do |arg, *opts, &err|
           next arg if ary.include?(arg)
           err["argument must be one of #{ary.map { |s| "`#{s}`" }.join(', ')}"]
         end

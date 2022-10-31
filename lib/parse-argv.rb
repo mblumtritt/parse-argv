@@ -110,7 +110,10 @@ module ParseArgv
   end
 
   def self.on_error(func = nil, &block)
-    @on_error = func || block
+    func ||= block
+    return @on_error if func.nil?
+    @on_error = func == :raise ? nil : func
+    self
   end
 
   class Assembler
@@ -460,13 +463,15 @@ module ParseArgv
       @rgs[name.to_sym]
     end
 
-    def as(type, name, *args)
-      value = @rgs[name.to_sym] or return
+    def as(type, name, *args, **opts)
+      value = @rgs[name.to_sym] or return opts[:default]
       error =
         proc do |message|
           raise(InvalidArgumentType.new(current_command, message, name))
         end
-      Conversion.for(type).call(value, *args, &error)
+      Conversion.for(type).call(value, *args, **opts, &error)
+    rescue Error => e
+      ParseArgv.on_error&.call(e) or raise
     end
 
     def fetch(name, *args, &block)

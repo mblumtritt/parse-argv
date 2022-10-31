@@ -51,6 +51,14 @@ RSpec.describe 'argument convsersion' do
       it 'returns nil' do
         expect(value).to be_nil
       end
+
+      context 'when a default is specified' do
+        let(:value) { result.as(:integer, :int, default: 21) }
+
+        it 'returns the default value' do
+          expect(value).to eq 21
+        end
+      end
     end
   end
 
@@ -444,6 +452,14 @@ RSpec.describe 'argument convsersion' do
 
       it 'returns nil' do
         expect(value).to be_nil
+      end
+
+      context 'when a default is specified' do
+        let(:value) { result.as(%w[one two three], :item, default: 'seven') }
+
+        it 'returns the default value' do
+          expect(value).to eq 'seven'
+        end
       end
     end
   end

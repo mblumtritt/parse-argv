@@ -10,4 +10,4 @@ RSpec.configure do |config|
   config.warnings = true
 end
 
-ParseArgv.on_error # disable default error handling
+ParseArgv.on_error(:raise)
