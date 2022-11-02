@@ -138,31 +138,4 @@ RSpec.describe 'subcommands' do
       expect(result.command).to eq %w[foo bar]
     end
   end
-
-  context '#all_commands' do
-    let(:argv) { %w[help] }
-
-    it 'returns the main command' do
-      expect(result.all_commands.main.name).to eq 'multi'
-    end
-
-    it 'returns all command names' do
-      expect(result.all_commands.names).to eq(
-        ['foo', 'foo bar', 'help', 'multi']
-      )
-    end
-
-    it 'allows to find a command' do
-      expect(result.all_commands.find('foo bar').full_name).to eq(
-        'multi foo bar'
-      )
-      expect(result.all_commands.find('evil')).to be_nil
-    end
-
-    it 'allows to convert to Array' do
-      expect(result.all_commands.to_a.map!(&:full_name)).to eq(
-        ['multi foo', 'multi foo bar', 'multi help', 'multi']
-      )
-    end
-  end
 end

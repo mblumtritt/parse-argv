@@ -8,9 +8,9 @@ group :development, :test do
   gem 'rake'
 end
 
-# group :development do
-#   gem 'yard'
-# end
+group :development do
+  gem 'yard'
+end
 
 group :test do
   gem 'rspec'

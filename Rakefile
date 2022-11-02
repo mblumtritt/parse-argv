@@ -3,7 +3,7 @@
 require 'rake/clean'
 require 'bundler/gem_tasks'
 require 'rspec/core/rake_task'
-# require 'yard'
+require 'yard'
 
 $stdout.sync = $stderr.sync = true
 
@@ -14,7 +14,9 @@ task(:default) { exec('rake --tasks') }
 
 RSpec::Core::RakeTask.new(:test) { |task| task.ruby_opts = %w[-w] }
 
-# YARD::Rake::YardocTask.new(:doc) { |task| task.stats_options = %w[--list-undoc] }
+YARD::Rake::YardocTask.new(:doc) do |task|
+  task.stats_options = %w[--list-undoc]
+end
 
-# desc 'Run YARD development server'
-# task('doc:dev' => :clobber) { exec('yard server --reload') }
+desc 'Run YARD development server'
+task('doc:dev' => :clobber) { exec('yard server --reload') }

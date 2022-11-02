@@ -63,14 +63,13 @@ case Argv.current_command.name
 when 'multi'
   puts(Argv.help? ? Argv : 'multi sample v1.0.0')
 when 'help'
-  command =
-    if Argv.member?(:command)
-      Argv.all_commands.find(Argv.command)
-    else
-      Argv.all_commands.main
-    end
-  Argv.error!("unknown command - #{Argv.command.join(' ')}") if command.nil?
-  puts(command)
+  if Argv.member?(:command)
+    command = Argv.find_command(Argv.command)
+    Argv.error!("unknown command - #{Argv.command.join(' ')}") if command.nil?
+    puts(command)
+  else
+    puts(Argv.main_command)
+  end
 else
   puts "command '#{Argv.current_command.name}':"
   attributes = Argv.to_h

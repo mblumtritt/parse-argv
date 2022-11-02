@@ -1,11 +1,33 @@
 # frozen_string_literal: true
 
 module ParseArgv
+  #
+  # Raised when the command line is parsed.
+  # @see .from
+  # @see .on_error
+  #
   class Error < StandardError
+    #
+    # @return [Integer] suggested termination code
+    #
+    attr_reader :code
+    #
+    # @return [Command] the related command
+    #
     attr_reader :command
+    #
+    # @!attribute [r] message
+    # @return [String] the message to be reported
+    #
 
-    def initialize(command, message)
+    #
+    # @param command [Command] the related command
+    # @param message [String] the message to be reported
+    # @param message [Integer] suggested termination code
+    #
+    def initialize(command, message, code = 1)
       @command = command
+      @code = code
       super("#{command.full_name}: #{message}")
     end
   end
@@ -102,6 +124,13 @@ module ParseArgv
     end
   end
 
+  #
+  # @param help_text [String] help text describing all sub-commands, parameters
+  #   and options in human readable format
+  # @param argv [Array<String>] command line arguments
+  # @return [Result] the arguments parsed from +argv+ related to the given
+  #   +help_text+.
+  #
   def self.from(help_text, argv = ARGV)
     command = Assembler.call(help_text, argv)
     block_given? ? yield(command) : command
@@ -109,6 +138,23 @@ module ParseArgv
     @on_error&.call(e) or raise
   end
 
+  #
+  # Defines custom error handler which will be called with the detected
+  # {Error}.
+  #
+  # By default the error handler writes the {Error#message} prefixed with
+  # related {Error#command} name to *$std_err* and terminates the application
+  # with the suggested {Error#code}.
+  #
+  # @overload on_error(func)
+  #   Uses the given call back function to handle all errors.
+  #   @param func [Proc] call back function which receives the {Error}
+  #
+  # @overload on_error(&block)
+  #   Uses the given +block+ to handle all errors.
+  #
+  # @return [ParseArgv] itself
+  #
   def self.on_error(func = nil, &block)
     func ||= block
     return @on_error if func.nil?
@@ -250,21 +296,32 @@ module ParseArgv
   end
 
   class Command
-    attr_reader :full_name, :name
+    #
+    # @return [String] complete command name
+    #
+    attr_reader :full_name
+    #
+    # @return [String] subcommand name
+    #
+    attr_reader :name
 
-    def initialize(name, help, short = nil)
-      @full_name = name.freeze
-      @name = short || +@full_name
+    # @!visibility private
+    def initialize(full_name, help, name = nil)
+      @full_name = full_name.freeze
       @help = help
+      @name = name || +@full_name
     end
 
+    # @!parse attr_reader :help
+    # @return [String] help text of the command
     def help
       return @help if @help.is_a?(String)
-      @help.shift while @help.first.empty?
-      @help.pop while @help.last.empty?
+      @help.shift while @help.first&.empty?
+      @help.pop while @help.last&.empty?
       @help = @help.join("\n").freeze
     end
 
+    # @!visibility private
     def inspect
       "#{__to_s[..-2]} #{@full_name}>"
     end
@@ -272,41 +329,6 @@ module ParseArgv
     alias __to_s to_s
     private :__to_s
     alias to_s help
-  end
-
-  class CommandCollection
-    attr_reader :current, :main
-
-    def initialize(all, current, main)
-      @ll = all
-      @current = all.find { |c| c.full_name == current }
-      @main = current == main ? @current : all.find { |c| c.full_name == main }
-    end
-
-    def names
-      @ll.map(&:name)
-    end
-
-    def find(name)
-      return if name.nil?
-      name = name.is_a?(Array) ? name.join(' ') : name.to_s
-      @ll.find { |cmd| cmd.name == name }
-    end
-
-    def to_a
-      Array.new(@ll)
-    end
-
-    def inspect
-      "#{__to_s[..-2]} #{self}>"
-    end
-
-    alias __to_s to_s
-    private :__to_s
-
-    def to_s
-      names.inspect
-    end
   end
 
   class CommandParser < Command
@@ -437,62 +459,167 @@ module ParseArgv
     end
   end
 
+  #
+  # The result of {ParseArgv.from} representing all arguments parsed from the
+  # command line.
+  #
   class Result
+    #
+    # @return [Array<Command>] all defined commands
+    #
     attr_reader :all_commands
 
+    #
+    # @return [Command] command used for this result
+    #
+    attr_reader :current_command
+
+    #
+    # @return [Command] main command
+    #
+    attr_reader :main_command
+
+    # @!visibility private
     def initialize(command, main_command, other, argv)
       @rgs = command.parse(argv)
+      @main_command = main_command.to_cmd
       @all_commands =
-        CommandCollection.new(
-          (other << main_command).map!(&:to_cmd).sort_by(&:name).freeze,
-          command.full_name,
-          main_command.full_name
-        )
+        (other.map!(&:to_cmd) << @main_command).sort_by(&:name).freeze
+      @current_command =
+        if command == main_command
+          @main_command
+        else
+          @all_commands.find { |c| c.full_name == command.full_name }
+        end
     end
 
-    def current_command
-      @all_commands.current
+    #
+    # @param name [String, Symbol] name of the requested argument
+    # @return [String] argument value
+    # @return [Boolean] argument value when argument was defined as an option
+    # @return [nil] when argument is not defined
+    #
+    def [](name)
+      @rgs[name.to_sym]
     end
 
+    #
+    # Requests an argument to be converted to a specified type. It uses
+    # {Conversion.for} to obtain the conversion procedure for the named
+    # argument.
+    #
+    # Some conversion procedures allow additional parameters which will be
+    # forwarded.
+    #
+    # @overload as(type, name, default: nil)
+    #   @param type [Symbol, Class, Regexp, Array<String>] conversion type
+    #   @param name [Symbol, String] argument name
+    #   @param default [Object] result, when an argument was not given
+    #   @return [Object] converted argument or the specified +default+
+    #
+    # @see Conversion.for
+    #
+    def as(type, name, *args, default: nil, **kwargs)
+      value = @rgs[name.to_sym] or return default
+      error =
+        proc do |message|
+          raise(InvalidArgumentType.new(current_command, message, name))
+        end
+      Conversion.for(type).call(value, *args, **kwargs, &error)
+    rescue Error => e
+      ParseArgv.on_error&.call(e) or raise
+    end
+
+    #
+    # Calls the error handler defined by {ParseArgv.on_error}.
+    #
+    # By default the error handler writes the {Error#message} prefixed with
+    # related {Error#command} name to *$std_err* and terminates the application
+    # with the suggested {Error#code}.
+    #
+    # If no error handler was defined an {Error} will be raised.
+    #
+    # This method is useful whenever your application needs signal an critical
+    # error case (and should be terminated).
+    #
+    # @param message [String] error message to present
+    # @param code [Integer] termination code
+    # @raise {Error} when no error handler was defined
+    #
+    # @see ParseArgv.on_error
+    #
+    def error!(message, code = 1)
+      error = Error.new(current_command, message, code)
+      ParseArgv.on_error&.call(error) || raise(error)
+    end
+
+    #
+    # Try to fetch the value for the given argument +name+.
+    #
+    # @overload fetch(name)
+    #   Will raise an {ArgumentError} when the requested attribute does not
+    #   exist.
+    #   @param name [String, Symbol] attribute name
+    #   @return [Object] attribute value
+    #   @raise [ArgumentError] when attribute was not defined
+    #
+    # @overload fetch(name, default_value)
+    #   Returns the +default_value+ when the requested attribute does not
+    #   exist.
+    #   @param name [String, Symbol] attribute name
+    #   @param default_value [Object] default value to return when attribute
+    #     not exists
+    #   @return [Object] attribute value; maybe the default_value
+    #
+    # @overload fetch(name, &block)
+    #   Returns the +block+ result when the requested attribute does not
+    #   exist.
+    #   @param name [String, Symbol] attribute name
+    #   @return [Object] attribute value; maybe the result of the +block+
+    #
+    def fetch(name, *args, &block)
+      name = name.to_sym
+      return @args[name] if @rgs.key?(name)
+      args.empty? ? (block || ATTRIBUTE_ERROR).call(name) : args.first
+    end
+
+    #
+    # Find the command with given +name+.
+    #
+    # @param name [String]
+    # @return [Command] found command
+    # @return [nil] when no command was found
+    #
+    def find_command(name)
+      return if name.nil?
+      name = name.is_a?(Array) ? name.join(' ') : name.to_s
+      @all_commands.find { |cmd| cmd.name == name }
+    end
+
+    #
+    # @param name [String, Symbol] attribute name
+    # @return [Boolean] whether the attribute exists
+    #
     def member?(name)
       @rgs.key?(name.to_sym)
     end
     alias exist? member?
 
-    def [](name)
-      @rgs[name.to_sym]
+    # @!visibility private
+    def respond_to_missing?(sym, _)
+      @rgs.key?(sym) || super
     end
 
-    def as(type, name, *args, **opts)
-      value = @rgs[name.to_sym] or return opts[:default]
-      error =
-        proc do |message|
-          raise(InvalidArgumentType.new(current_command, message, name))
-        end
-      Conversion.for(type).call(value, *args, **opts, &error)
-    rescue Error => e
-      ParseArgv.on_error&.call(e) or raise
-    end
-
-    def fetch(name, *args, &block)
-      block ||= proc { |key| raise(UnknownAttribute, key) }
-      @rgs.fetch(name.to_sym, *args, &block)
-    end
-
-    def error!(message, code = 1)
-      $stderr.puts("#{current_command.full_name}: #{message}")
-      exit(code)
-    end
-
+    #
+    # @return [{Symbol => String, Boolean}] Hash of all argument name/value
+    #   pairs
+    #
     def to_h
       Hash[@rgs.to_a] # create a copy without compare_by_identity
     end
     alias to_hash to_h
 
-    def respond_to_missing?(sym, _)
-      @rgs.key?(sym) || super
-    end
-
+    # @!visibility private
     def inspect
       "#{__to_s[..-2]}:#{@current_command.full_name} #{
         @rgs.map { |k, v| "#{k}: #{v}" }.join(', ')
@@ -502,8 +629,12 @@ module ParseArgv
     alias __to_s to_s
     private :__to_s
 
+    #
+    # Returns the help text of the {#current_command}
+    # @return [String] the help text
+    #
     def to_s
-      @all_commands.current.help
+      current_command.help
     end
 
     private
@@ -513,11 +644,31 @@ module ParseArgv
       sym = sym[0..-2].to_sym
       @rgs.key?(sym) ? @rgs[sym] == true : super
     end
+
+    ATTRIBUTE_ERROR = proc { |name| raise(UnknownAttribute, name) }
+    private_constant(:ATTRIBUTE_ERROR)
   end
 
-  @on_error = ->(e) { $stderr.puts e or exit 1 }
+  @on_error = ->(e) { $stderr.puts e or exit e.code }
   autoload(:Conversion, File.expand_path('./parse-argv/conversion', __dir__))
+
   private_constant(
-    *(constants - %i[Error Command CommandCollection Result Conversion])
+    :ArgumentMissingError,
+    :Assembler,
+    :CommandParser,
+    :DoublicateArgumentDefinitionError,
+    :DoublicateCommandDefinitionError,
+    :DoublicateOptionDefinitionError,
+    :InvalidArgumentType,
+    :InvalidCommandError,
+    :InvalidSubcommandNameError,
+    :NoCommandDefinedError,
+    :NoDefaultCommandDefinedError,
+    :OptionArgumentMissingError,
+    :TooManyArgumentsError,
+    :UnknonwOptionError,
+    :UnknownAttribute,
+    :UnknownAttributeConverter,
+    :UsageLineMissingError
   )
 end

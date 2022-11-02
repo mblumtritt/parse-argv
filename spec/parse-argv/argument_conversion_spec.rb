@@ -1,44 +1,23 @@
 # frozen_string_literal: true
 
 require_relative '../helper'
+require 'date'
 
-RSpec.describe 'argument convsersion' do
-  subject(:result) { ParseArgv.from(help_text, argv) }
+RSpec.describe 'argument conversion' do
+  subject(:result) { ParseArgv.from("usage: test:\n --opt <value> some", argv) }
 
-  let(:help_text) { <<~HELP }
-    This is a demo for argument conversion.
-
-    Usage: test
-
-    Options:
-      --int <int>       #to_i conversion
-      --float <float>   #to_f conversion
-      --pos <pos>       positive number
-      --neg <neg>       negative number
-      --fpos <fpos>     positive float number
-      --fneg <fneg>     negative float number
-      --str <str>       non-empty string
-      --fname <fname>   non-empty relative file name
-      --ary <ary>       array of given items
-      --tary <tary>     array of items of given type
-      --item <item>     one of [one, two, three]
-      --match <match>   have to match /\Ate+st\z/
-      --file <file>     existing file
-      --dir <dir>       existing directory
-      --regex <regex>   regular expression
-      --custom <custom> custom type
-  HELP
+  let(:value) { result.as(type, :value) }
 
   context ':integer' do
-    let(:value) { result.as(:integer, :int) }
-    let(:argv) { %w[--int 16] }
+    let(:type) { :integer }
+    let(:argv) { %w[--opt 16] }
 
     it 'returns the correct value' do
       expect(value).to eq 16
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { %w[--int invalid] }
+      let(:argv) { %w[--opt invalid] }
 
       it 'returns zero' do
         expect(value).to be_zero
@@ -53,25 +32,23 @@ RSpec.describe 'argument convsersion' do
       end
 
       context 'when a default is specified' do
-        let(:value) { result.as(:integer, :int, default: 21) }
-
         it 'returns the default value' do
-          expect(value).to eq 21
+          expect(result.as(:integer, :value, default: 21)).to eq 21
         end
       end
     end
   end
 
   context ':float' do
-    let(:value) { result.as(:float, :float) }
-    let(:argv) { %w[--float 16.5] }
+    let(:type) { :float }
+    let(:argv) { %w[--opt 16.5] }
 
     it 'returns the correct value' do
       expect(value).to eq 16.5
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { %w[--float invalid] }
+      let(:argv) { %w[--opt invalid] }
 
       it 'returns zero' do
         expect(value).to be_zero
@@ -88,20 +65,20 @@ RSpec.describe 'argument convsersion' do
   end
 
   context ':positive' do
-    let(:value) { result.as(:positive, :pos) }
-    let(:argv) { %w[--pos 16] }
+    let(:type) { :positive }
+    let(:argv) { %w[--opt 16] }
 
     it 'returns the correct value' do
       expect(value).to eq 16
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { %w[--pos:-16] }
+      let(:argv) { %w[--opt:-16] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: positive number expected - <pos>'
+          'test: positive number expected - <value>'
         )
       end
     end
@@ -116,20 +93,20 @@ RSpec.describe 'argument convsersion' do
   end
 
   context ':negative' do
-    let(:value) { result.as(:negative, :neg) }
-    let(:argv) { %w[--neg:-16] }
+    let(:type) { :negative }
+    let(:argv) { %w[--opt:-16] }
 
     it 'returns the correct value' do
       expect(value).to eq(-16)
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { %w[--neg:16] }
+      let(:argv) { %w[--opt 16] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: negative number expected - <neg>'
+          'test: negative number expected - <value>'
         )
       end
     end
@@ -144,20 +121,20 @@ RSpec.describe 'argument convsersion' do
   end
 
   context ':float_positive' do
-    let(:value) { result.as(:float_positive, :fpos) }
-    let(:argv) { %w[--fpos 16.5] }
+    let(:type) { :float_positive }
+    let(:argv) { %w[--opt 16.5] }
 
     it 'returns the correct value' do
       expect(value).to eq 16.5
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { %w[--fpos:-16.1] }
+      let(:argv) { %w[--opt:-16.1] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: positive float number expected - <fpos>'
+          'test: positive float number expected - <value>'
         )
       end
     end
@@ -172,20 +149,20 @@ RSpec.describe 'argument convsersion' do
   end
 
   context ':float_negative' do
-    let(:value) { result.as(:float_negative, :fneg) }
-    let(:argv) { %w[--fneg:-16.5] }
+    let(:type) { :float_negative }
+    let(:argv) { %w[--opt:-16.5] }
 
     it 'returns the correct value' do
       expect(value).to eq(-16.5)
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { %w[--fneg:16.1] }
+      let(:argv) { %w[--opt 16.1] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: negative float number expected - <fneg>'
+          'test: negative float number expected - <value>'
         )
       end
     end
@@ -200,20 +177,20 @@ RSpec.describe 'argument convsersion' do
   end
 
   context ':string' do
-    let(:value) { result.as(:string, :str) }
-    let(:argv) { %w[--str some] }
+    let(:type) { :string }
+    let(:argv) { %w[--opt some] }
 
     it 'returns the correct value' do
       expect(value).to eq 'some'
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { ['--str', ''] }
+      let(:argv) { ['--opt', ''] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: argument can not be empty - <str>'
+          'test: argument can not be empty - <value>'
         )
       end
     end
@@ -228,21 +205,21 @@ RSpec.describe 'argument convsersion' do
   end
 
   context ':regexp' do
-    let(:value) { result.as(:regexp, :regex) }
-    let(:argv) { ['--regex', '\Atest.*'] }
+    let(:type) { :regexp }
+    let(:argv) { %w[--opt \Atest.*] }
 
     it 'returns the correct value' do
       expect(value).to eq(/\Atest.*/)
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { ['--regex', '/some[/'] }
+      let(:argv) { ['--opt', '/some[/'] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
           'test: invalid regular expression; ' \
-            'premature end of char-class: /some[/ - <regex>'
+            'premature end of char-class: /some[/ - <value>'
         )
       end
     end
@@ -256,21 +233,111 @@ RSpec.describe 'argument convsersion' do
     end
   end
 
+  context ':date' do
+    let(:type) { :date }
+    let(:argv) { %w[--opt 2022-01-02] }
+
+    it 'returns the correct value' do
+      expect(value).to eq Date.new(2022, 1, 2)
+    end
+
+    context 'when an invalid value is given' do
+      let(:argv) { %w[--opt invalid] }
+
+      it 'raises an error' do
+        expect { value }.to raise_error(
+          ParseArgv::Error,
+          'test: argument must be a date - <value>'
+        )
+      end
+    end
+
+    context 'when value is not defined' do
+      let(:argv) { [] }
+
+      it 'returns nil' do
+        expect(value).to be_nil
+      end
+    end
+
+    today = Date.today
+    {
+      '0131' => Date.new(today.year, 1, 31),
+      '20220131' => Date.new(2022, 1, 31),
+      '17' => Date.new(today.year, today.month, 17),
+      'may-12' => Date.new(today.year, 5, 12),
+      '1.april' => Date.new(today.year, 4, 1)
+    }.each_pair do |arg, expected|
+      context "when a shorthand Date is given like '#{arg}'" do
+        let(:argv) { ['--opt', arg] }
+
+        it "converts to a Date: #{expected}" do
+          expect(value).to eq expected
+        end
+      end
+    end
+  end
+
+  context ':time' do
+    let(:type) { :time }
+    let(:argv) { ['--opt', '2022-01-02 13:14:15 GMT'] }
+
+    it 'returns the correct value' do
+      expect(value).to eq Time.new(2022, 1, 2, 13, 14, 15, 0)
+    end
+
+    context 'when an invalid value is given' do
+      let(:argv) { %w[--opt invalid] }
+
+      it 'raises an error' do
+        expect { value }.to raise_error(
+          ParseArgv::Error,
+          'test: argument must be a time - <value>'
+        )
+      end
+    end
+
+    context 'when value is not defined' do
+      let(:argv) { [] }
+
+      it 'returns nil' do
+        expect(value).to be_nil
+      end
+    end
+
+    now = Time.now
+    {
+      '0131' => Time.new(now.year, 1, 31, 0, 0, 0, now.utc_offset),
+      '13:14' => Time.new(now.year, now.month, now.mday, 13, 14),
+      '13:14 utc+2' => Time.new(now.year, now.month, now.mday, 13, 14, 0, 7200),
+      '17 13:14' => Time.new(now.year, now.month, 17, 13, 14),
+      'may-12 13:14' => Time.new(now.year, 5, 12, 13, 14)
+    }.each_pair do |arg, expected|
+      context "when a shorthand Time is given like '#{arg}'" do
+        let(:argv) { ['--opt', arg] }
+
+        it "converts to a Time: #{expected}" do
+          expect(value).to eq expected
+        end
+      end
+    end
+  end
+
   context ':file_name' do
-    let(:value) { result.as(:file_name, :fname) }
-    let(:argv) { %w[--fname file.ext] }
+    let(:type){ :file_name }
+    let(:argv) { %w[--opt file.ext] }
 
     it 'returns the correct value' do
       expect(value).to eq File.join(Dir.pwd, 'file.ext')
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { ['--fname', ''] }
+      let(:argv) { ['--opt', ''] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: argument can not be empty - <fname>'
+          'test: argument can not be empty - <value>'
         )
       end
     end
@@ -285,31 +352,31 @@ RSpec.describe 'argument convsersion' do
   end
 
   context ':file' do
-    let(:value) { result.as(:file, :file) }
-    let(:argv) { ['--file', __FILE__] }
+    let(:type){ :file }
+    let(:argv) { ['--opt', __FILE__] }
 
     it 'returns the correct value' do
       expect(value).to eq __FILE__
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { %w[--file invalid] }
+      let(:argv) { %w[--opt invalid] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: file does not exist - <file>'
+          'test: file does not exist - <value>'
         )
       end
     end
 
     context 'when not a file is given' do
-      let(:argv) { ['--file', __dir__] }
+      let(:argv) { ['--opt', __dir__] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: argument must be a file - <file>'
+          'test: argument must be a file - <value>'
         )
       end
     end
@@ -323,19 +390,19 @@ RSpec.describe 'argument convsersion' do
     end
 
     context 'when an additional file attribute is given' do
-      let(:value) { result.as(:file, :file, :readable) }
+      let(:value) { result.as(:file, :value, :readable) }
 
       it 'returns the correct value' do
         expect(value).to eq __FILE__
       end
 
       context 'when the attribute is not valid for the file' do
-        let(:value) { result.as(:file, :file, :symlink) }
+        let(:value) { result.as(:file, :value, :symlink) }
 
         it 'raises an error' do
           expect { value }.to raise_error(
             ParseArgv::Error,
-            'test: file attribute `symlink` not satisfied - <file>'
+            'test: file attribute `symlink` not satisfied - <value>'
           )
         end
       end
@@ -343,31 +410,31 @@ RSpec.describe 'argument convsersion' do
   end
 
   context ':directory' do
-    let(:value) { result.as(:directory, :dir) }
-    let(:argv) { ['--dir', __dir__] }
+    let(:type){ :directory }
+    let(:argv) { ['--opt', __dir__] }
 
     it 'returns the correct value' do
       expect(value).to eq __dir__
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { %w[--dir invalid] }
+      let(:argv) { %w[--opt invalid] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: directory does not exist - <dir>'
+          'test: directory does not exist - <value>'
         )
       end
     end
 
     context 'when not a file is given' do
-      let(:argv) { ['--dir', __FILE__] }
+      let(:argv) { ['--opt', __FILE__] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: argument must be a directory - <dir>'
+          'test: argument must be a directory - <value>'
         )
       end
     end
@@ -381,19 +448,19 @@ RSpec.describe 'argument convsersion' do
     end
 
     context 'when an additional file attribute is given' do
-      let(:value) { result.as(:directory, :dir, :readable) }
+      let(:value) { result.as(:directory, :value, :readable) }
 
       it 'returns the correct value' do
         expect(value).to eq __dir__
       end
 
       context 'when the attribute is not valid for the directory' do
-        let(:value) { result.as(:directory, :dir, :symlink) }
+        let(:value) { result.as(:directory, :value, :symlink) }
 
         it 'raises an error' do
           expect { value }.to raise_error(
             ParseArgv::Error,
-            'test: directory attribute `symlink` not satisfied - <dir>'
+            'test: directory attribute `symlink` not satisfied - <value>'
           )
         end
       end
@@ -401,20 +468,20 @@ RSpec.describe 'argument convsersion' do
   end
 
   context ':array' do
-    let(:value) { result.as(:array, :ary) }
-    let(:argv) { ['--ary', '[aaaa,  bbb,cc  ,,d]'] }
+    let(:type){ :array }
+    let(:argv) { ['--opt', '[aaaa,  bbb,cc  ,,d]'] }
 
     it 'returns the correct value' do
       expect(value).to eq %w[aaaa bbb cc d]
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { %w[--ary []] }
+      let(:argv) { %w[--opt []] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: argument can not be empty - <ary>'
+          'test: argument can not be empty - <value>'
         )
       end
     end
@@ -428,21 +495,21 @@ RSpec.describe 'argument convsersion' do
     end
   end
 
-  context 'Given String Array' do
-    let(:value) { result.as(%w[one two three], :item) }
-    let(:argv) { %w[--item two] }
+  context 'Array<String>' do
+    let(:type){ %w[one two three] }
+    let(:argv) { %w[--opt two] }
 
     it 'returns the correct value' do
       expect(value).to eq 'two'
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { %w[--item invalid] }
+      let(:argv) { %w[--opt invalid] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: argument must be one of `one`, `two`, `three` - <item>'
+          'test: argument must be one of `one`, `two`, `three` - <value>'
         )
       end
     end
@@ -455,7 +522,7 @@ RSpec.describe 'argument convsersion' do
       end
 
       context 'when a default is specified' do
-        let(:value) { result.as(%w[one two three], :item, default: 'seven') }
+        let(:value) { result.as(%w[one two three], :value, default: 'seven') }
 
         it 'returns the default value' do
           expect(value).to eq 'seven'
@@ -464,21 +531,21 @@ RSpec.describe 'argument convsersion' do
     end
   end
 
-  context 'Types Array' do
-    let(:value) { result.as('array[positive]', :tary) }
-    let(:argv) { %w[--tary [1,2,3]] }
+  context '[<type>]' do
+    let(:type){ [:positive] }
+    let(:argv) { %w[--opt [1,2,3]] }
 
     it 'returns the correct value' do
       expect(value).to eq [1, 2, 3]
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { %w[--tary [1,2,-3]] }
+      let(:argv) { %w[--opt [1,2,-3]] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: positive number expected - <tary>'
+          'test: positive number expected - <value>'
         )
       end
     end
@@ -492,21 +559,21 @@ RSpec.describe 'argument convsersion' do
     end
   end
 
-  context 'Given Regular Expression' do
-    let(:value) { result.as(/\Ate+st\z/, :match) }
-    let(:argv) { %w[--match teeeeest] }
+  context 'Regular Expression' do
+    let(:type){ /\Ate+st\z/ }
+    let(:argv) { %w[--opt teeeeest] }
 
     it 'returns the correct value' do
       expect(value).to eq 'teeeeest'
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { %w[--match toest] }
+      let(:argv) { %w[--opt toest] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: argument must match (?-mix:\Ate+st\z) - <match>'
+          'test: argument must match (?-mix:\Ate+st\z) - <value>'
         )
       end
     end
@@ -516,6 +583,14 @@ RSpec.describe 'argument convsersion' do
 
       it 'returns nil' do
         expect(value).to be_nil
+      end
+    end
+
+    context 'when the :match option is given' do
+      let(:value) { result.as(/\At(e+)st\z/, :value, :match) }
+
+      it 'returns the Regexp::Match' do
+        expect(value).to eq /\At(e+)st\z/.match('teeeeest')
       end
     end
   end
@@ -528,20 +603,20 @@ RSpec.describe 'argument convsersion' do
       end
     end
 
-    let(:value) { result.as(:my, :custom) }
-    let(:argv) { %w[--custom test] }
+    let(:type) { :my }
+    let(:argv) { %w[--opt test] }
 
     it 'returns the correct value' do
       expect(value).to eq 'test'
     end
 
     context 'when an invalid value is given' do
-      let(:argv) { %w[--custom invalid] }
+      let(:argv) { %w[--opt invalid] }
 
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: not a custom type - <custom>'
+          'test: not a custom type - <value>'
         )
       end
     end
