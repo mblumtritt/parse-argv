@@ -147,20 +147,6 @@ RSpec.describe 'command parsing' do
     end
   end
 
-  context 'when options are defined before usage line' do
-    let(:help_text) { <<~HELP }
-        -s, --switch   a switch
-      usage: test
-    HELP
-
-    it 'raises an error' do
-      expect { ParseArgv.from(help_text, []) }.to raise_error(
-        ArgumentError,
-        "options can only be defined after a 'usage' line - line 1"
-      )
-    end
-  end
-
   context 'when help text is specified before the first usage line' do
     let(:help_text) { <<~HELP }
       This is some header text before the usage line.

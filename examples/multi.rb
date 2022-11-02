@@ -66,9 +66,9 @@ when 'help'
   if Argv.member?(:command)
     command = Argv.find_command(Argv.command)
     Argv.error!("unknown command - #{Argv.command.join(' ')}") if command.nil?
-    puts(command)
+    puts(command.help)
   else
-    puts(Argv.main_command)
+    puts(Argv.main_command.help)
   end
 else
   puts "command '#{Argv.current_command.name}':"

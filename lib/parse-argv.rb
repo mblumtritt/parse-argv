@@ -80,17 +80,9 @@ module ParseArgv
     end
   end
 
-  class UsageLineMissingError < ArgumentError
-    def initialize(line_number)
-      super(
-        "options can only be defined after a 'usage' line - line #{line_number}"
-      )
-    end
-  end
-
   class NoCommandDefinedError < ArgumentError
-    def initialize(line_number)
-      super("help text does not define a valid command - line #{line_number}")
+    def initialize
+      super('help text does not define a valid command')
     end
   end
 
@@ -132,8 +124,8 @@ module ParseArgv
   #   +help_text+.
   #
   def self.from(help_text, argv = ARGV)
-    command = Assembler.call(help_text, argv)
-    block_given? ? yield(command) : command
+    result = Assembler.call(help_text, argv)
+    block_given? ? yield(result) : result
   rescue Error => e
     @on_error&.call(e) or raise
   end
@@ -160,139 +152,6 @@ module ParseArgv
     return @on_error if func.nil?
     @on_error = func == :raise ? nil : func
     self
-  end
-
-  class Assembler
-    def self.call(help_text, argv)
-      new.parse(help_text).command_from(Array.new(argv))
-    end
-
-    def parse(help_text)
-      @commands = []
-      @help = []
-      @header_text = true
-      @line_number = 0
-      help_text.each_line(chomp: true) do |line|
-        @line_number += 1
-        case line
-        when /\A\s*#/
-          @help = ['']
-          @header_text = true
-          next
-        when /usage: (\w+([ \w]+)?)/i
-          newcurrent_command(Regexp.last_match)
-        when /\A\s+-([[:alnum:]]), --([[[:alnum:]]-]+)[ :]<([[:lower:]]+)>\s+\S+/
-          option(Regexp.last_match)
-        when /\A\s+-{1,2}([[[:alnum:]]-]+)[ :]<([[:lower:]]+)>\s+\S+/
-          simple_option(Regexp.last_match)
-        when /\A\s+-([[:alnum:]]), --([[[:alnum:]]-]+)\s+\S+/
-          switch(Regexp.last_match)
-        when /\A\s+-{1,2}([[[:alnum:]]-]+)\s+\S+/
-          simple_switch(Regexp.last_match[1])
-        end
-        @help << line
-      end
-      self
-    end
-
-    def command_from(argv)
-      raise(NoCommandDefinedError, @line_number) if @commands.empty?
-      main = main_command
-      if argv.empty? || @commands.empty?
-        Result.new(main, main, @commands, argv)
-      else
-        sub_command_from(main, argv)
-      end
-    end
-
-    private
-
-    def sub_command_from(main, argv)
-      prepare_subcommands(main)
-      args = argv.take_while { |arg| arg[0] != '-' }
-      found, prefix = args.empty? ? main : find_command(args)
-      raise(InvalidCommandError.new(main, args.first)) if found.nil?
-      argv.shift(prefix) if prefix
-      Result.new(found, main, @commands, argv)
-    end
-
-    def find_command(args)
-      args
-        .size
-        .downto(1) do |i|
-          name = args.take(i).join(' ')
-          cmd = @commands.find { |command| command.name == name } or next
-          return cmd, i
-        end
-      nil
-    end
-
-    def prepare_subcommands(main)
-      prefix = "#{main.full_name} "
-      @commands.each do |cmd|
-        next cmd.name.delete_prefix!(prefix) if cmd.name.start_with?(prefix)
-        raise(InvalidSubcommandNameError.new(main.name, cmd.name))
-      end
-    end
-
-    def main_command
-      main = @commands.find { |cmd| cmd.name.index(' ').nil? }
-      raise(NoDefaultCommandDefinedError) if main.nil?
-      @commands.delete(main)
-    end
-
-    def command
-      @command || raise(UsageLineMissingError, @line_number)
-    end
-
-    def option(match)
-      command.option(match[1], match[3])
-      command.option(match[2], match[3])
-    end
-
-    def simple_option(match)
-      command.option(match[1], match[2])
-    end
-
-    def switch(match)
-      command.switch(match[1], match[2])
-      command.switch(match[2], match[2])
-    end
-
-    def simple_switch(name)
-      command.switch(name, name)
-    end
-
-    def newcurrent_command(match)
-      name = match[1].rstrip
-      @help = [] unless @header_text
-      @header_text = false
-      @commands.find do |cmd|
-        next if cmd.name != name
-        raise(DoublicateCommandDefinitionError.new(name, @line_number))
-      end
-      @command = CommandParser.new(name, @help)
-      define_arguments(@command, match.post_match)
-      @commands << @command
-    end
-
-    def define_arguments(parser, str)
-      return if str.empty?
-      str.scan(/(\[?<([[:alnum:]]+)>(\.{3})?\]?)/) do |(all, name, cons)|
-        parser.argument(name.to_sym, ARGTYPE[all[0] == '['][cons.nil?])
-      end
-    end
-
-    ARGTYPE = {
-      true => {
-        true => :optional_single,
-        false => :optional_consume
-      }.compare_by_identity,
-      false => {
-        true => :required_single,
-        false => :required_consume
-      }.compare_by_identity
-    }.compare_by_identity
   end
 
   class Command
@@ -328,135 +187,7 @@ module ParseArgv
 
     alias __to_s to_s
     private :__to_s
-    alias to_s help
-  end
-
-  class CommandParser < Command
-    def initialize(name, help)
-      super
-      @options = {}
-      @arguments = {}
-    end
-
-    def switch(name, var_name)
-      raise(DoublicateOptionDefinitionError, name) if known?(name)
-      @options[name] = "!#{var_name}"
-    end
-
-    def option(name, var_name)
-      raise(DoublicateOptionDefinitionError, name) if known?(name)
-      @options[name] = var_name
-    end
-
-    def argument(name, type)
-      raise(DoublicateArgumentDefinitionError, name) if known?(name)
-      @arguments[name] = type
-    end
-
-    def parse(argv)
-      @result = {}.compare_by_identity
-      arguments = parse_argv(argv)
-      process_switches
-      process(arguments) unless help?
-      @result
-    end
-
-    def to_cmd
-      Command.new(@full_name, @help, @name)
-    end
-
-    private
-
-    def help?
-      name.index(' ').nil? &&
-        (@result[:help] == true || @result[:version] == true)
-    end
-
-    def known?(name)
-      @options.key?(name) || @arguments.key?(name)
-    end
-
-    def parse_argv(argv)
-      arguments = []
-      while (arg = argv.shift)
-        case arg
-        when '--'
-          return arguments + argv
-        when /\A--([[[:alnum:]]-]+)\z/
-          process_option(Regexp.last_match[1], argv)
-        when /\A-{1,2}([[[:alnum:]]-]+):(.+)\z/
-          process_option_arg(Regexp.last_match)
-        when /\A-([[:alnum:]]+)\z/
-          process_opts(Regexp.last_match[1], argv)
-        else
-          arguments << arg
-        end
-      end
-      arguments
-    end
-
-    def process(argv)
-      reduce(argv)
-      @arguments.each_pair do |key, type|
-        @result[key] = case type
-        when :optional_single
-          argv.shift unless argv.empty?
-        when :optional_consume
-          argv.shift(argv.size) unless argv.empty?
-        when :required_single
-          argv.shift or raise(ArgumentMissingError.new(self, key))
-        when :required_consume
-          raise(ArgumentMissingError.new(self, key)) if argv.empty?
-          argv.shift(argv.size)
-        end
-      end
-      raise(TooManyArgumentsError, self) unless argv.empty?
-    end
-
-    def argument_results(args)
-      @arguments.each_key { |name| @result[name.to_sym] = args.shift }
-    end
-
-    def reduce(argv)
-      keys = @arguments.keys.reverse!
-      while argv.size < @arguments.size
-        nonreq = keys.find { |key| @arguments[key][0] == 'o' }
-        next @arguments.delete(keys.delete(nonreq)) if nonreq
-        raise(ArgumentMissingError.new(self, @arguments.keys.last))
-      end
-    end
-
-    def process_option(name, argv, pref = '-')
-      key = @options[name]
-      raise(UnknonwOptionError.new(self, "#{pref}-#{name}")) if key.nil?
-      return @result[key[1..].to_sym] = true if key[0] == '!'
-      @result[key.to_sym] = value = argv.shift
-      return unless value.nil? || value[0] == '-'
-      raise(OptionArgumentMissingError.new(self, key, "#{pref}-#{name}"))
-    end
-
-    def process_option_arg(match)
-      key = @options[match[1]] or
-        raise(UnknonwOptionError.new(self, "#{match.pre_match}#{match[1]}"))
-      return @result[key[1..].to_sym] = as_boolean(match[2]) if key[0] == '!'
-      @result[key.to_sym] = match[2]
-    end
-
-    def process_opts(name, argv)
-      name.each_char { |n| process_option(n, argv, nil) }
-    end
-
-    def process_switches
-      @options.each_value do |name|
-        next unless name[0] == '!'
-        name = name[1..].to_sym
-        @result[name] = false unless @result.key?(name)
-      end
-    end
-
-    def as_boolean(str)
-      %w[y yes t true on].include?(str)
-    end
+    alias to_s name
   end
 
   #
@@ -480,17 +211,11 @@ module ParseArgv
     attr_reader :main_command
 
     # @!visibility private
-    def initialize(command, main_command, other, argv)
-      @rgs = command.parse(argv)
-      @main_command = main_command.to_cmd
-      @all_commands =
-        (other.map!(&:to_cmd) << @main_command).sort_by(&:name).freeze
-      @current_command =
-        if command == main_command
-          @main_command
-        else
-          @all_commands.find { |c| c.full_name == command.full_name }
-        end
+    def initialize(all_commands, current_command, main_command, args)
+      @all_commands = all_commands
+      @current_command = current_command
+      @main_command = main_command
+      @rgs = args
     end
 
     #
@@ -649,13 +374,337 @@ module ParseArgv
     private_constant(:ATTRIBUTE_ERROR)
   end
 
+  module Assembler
+    def self.call(help_text, argv)
+      findings = CommandFinder.new(FirstPass.new.parse(help_text)).from(argv)
+      Result.new(
+        findings.commands,
+        findings.current,
+        findings.main,
+        SecondPass.new(findings.found).parse(findings.argv)
+      )
+    end
+
+    class CommandParser < Command
+      def initialize(name, help)
+        super
+        @options = {}
+        @arguments = {}
+      end
+
+      def each_line(&block)
+        @help.each(&block)
+      end
+
+      def switch(name, var_name)
+        raise(DoublicateOptionDefinitionError, name) if known?(name)
+        @options[name] = "!#{var_name}"
+      end
+
+      def option(name, var_name)
+        raise(DoublicateOptionDefinitionError, name) if known?(name)
+        @options[name] = var_name
+      end
+
+      def argument(name, type)
+        raise(DoublicateArgumentDefinitionError, name) if known?(name)
+        @arguments[name] = type
+      end
+
+      def parse(argv)
+        @result = {}.compare_by_identity
+        arguments = parse_argv(argv)
+        process_switches
+        process(arguments) unless help?
+        @result
+      end
+
+      def to_cmd
+        Command.new(@full_name, @help, @name)
+      end
+
+      private
+
+      def help?
+        name.index(' ').nil? &&
+          (@result[:help] == true || @result[:version] == true)
+      end
+
+      def known?(name)
+        @options.key?(name) || @arguments.key?(name)
+      end
+
+      def parse_argv(argv)
+        arguments = []
+        while (arg = argv.shift)
+          case arg
+          when '--'
+            return arguments + argv
+          when /\A--([[[:alnum:]]-]+)\z/
+            process_option(Regexp.last_match[1], argv)
+          when /\A-{1,2}([[[:alnum:]]-]+):(.+)\z/
+            process_option_arg(Regexp.last_match)
+          when /\A-([[:alnum:]]+)\z/
+            process_opts(Regexp.last_match[1], argv)
+          else
+            arguments << arg
+          end
+        end
+        arguments
+      end
+
+      def process(argv)
+        reduce(argv)
+        @arguments.each_pair do |key, type|
+          @result[key] = case type
+          when :optional_single
+            argv.shift unless argv.empty?
+          when :optional_consume
+            argv.shift(argv.size) unless argv.empty?
+          when :required_single
+            argv.shift or raise(ArgumentMissingError.new(self, key))
+          when :required_consume
+            raise(ArgumentMissingError.new(self, key)) if argv.empty?
+            argv.shift(argv.size)
+          end
+        end
+        raise(TooManyArgumentsError, self) unless argv.empty?
+      end
+
+      def argument_results(args)
+        @arguments.each_key { |name| @result[name.to_sym] = args.shift }
+      end
+
+      def reduce(argv)
+        keys = @arguments.keys.reverse!
+        while argv.size < @arguments.size
+          nonreq = keys.find { |key| @arguments[key][0] == 'o' }
+          next @arguments.delete(keys.delete(nonreq)) if nonreq
+          raise(ArgumentMissingError.new(self, @arguments.keys.last))
+        end
+      end
+
+      def process_option(name, argv, pref = '-')
+        key = @options[name]
+        raise(UnknonwOptionError.new(self, "#{pref}-#{name}")) if key.nil?
+        return @result[key[1..].to_sym] = true if key[0] == '!'
+        @result[key.to_sym] = value = argv.shift
+        return unless value.nil? || value[0] == '-'
+        raise(OptionArgumentMissingError.new(self, key, "#{pref}-#{name}"))
+      end
+
+      def process_option_arg(match)
+        key = @options[match[1]] or
+          raise(UnknonwOptionError.new(self, "#{match.pre_match}#{match[1]}"))
+        return @result[key[1..].to_sym] = as_boolean(match[2]) if key[0] == '!'
+        @result[key.to_sym] = match[2]
+      end
+
+      def process_opts(name, argv)
+        name.each_char { |n| process_option(n, argv, nil) }
+      end
+
+      def process_switches
+        @options.each_value do |name|
+          next unless name[0] == '!'
+          name = name[1..].to_sym
+          @result[name] = false unless @result.key?(name)
+        end
+      end
+
+      def as_boolean(str)
+        %w[y yes t true on].include?(str)
+      end
+    end
+
+    class FirstPass
+      def parse(help_text)
+        @commands = []
+        @help = []
+        @header_text = true
+        @line_number = 0
+        help_text.each_line(chomp: true) do |line|
+          @line_number += 1
+          case line
+          when /\A\s*#/
+            @help = ['']
+            @header_text = true
+            next
+          when /usage: (\w+([ \w]+)?)/i
+            new_command(Regexp.last_match)
+          end
+          @help << line
+        end
+        @commands
+      end
+
+      private
+
+      def new_command(match)
+        name = match[1].rstrip
+        @help = [] unless @header_text
+        @header_text = false
+        @commands.find do |cmd|
+          next if cmd.name != name
+          raise(DoublicateCommandDefinitionError.new(name, @line_number))
+        end
+        @command = CommandParser.new(name, @help)
+        define_arguments(@command, match.post_match)
+        @commands << @command
+      end
+
+      def define_arguments(parser, str)
+        return if str.empty?
+        str.scan(/(\[?<([[:alnum:]]+)>(\.{3})?\]?)/) do |(all, name, cons)|
+          parser.argument(name.to_sym, ARGTYPE[all[0] == '['][cons.nil?])
+        end
+      end
+
+      ARGTYPE = {
+        true => {
+          true => :optional_single,
+          false => :optional_consume
+        }.compare_by_identity,
+        false => {
+          true => :required_single,
+          false => :required_consume
+        }.compare_by_identity
+      }.compare_by_identity
+    end
+
+    class CommandFinder
+      attr_reader :commands, :found, :main, :current, :argv
+
+      def initialize(commands)
+        @commands = commands
+      end
+
+      def from(argv)
+        raise(NoCommandDefinedError) if @commands.empty?
+        @main = find_main or raise(NoDefaultCommandDefinedError)
+        prepare_subcommands
+        @found =
+          if argv.empty? || single?
+            @argv = argv
+            @current = @main
+          else
+            @argv = Array.new(argv)
+            @current = find_sub_command
+          end
+        finalize
+        self
+      end
+
+      private
+
+      def single?
+        @commands.size == 1
+      end
+
+      def find_main
+        @commands.find { |cmd| cmd.name.index(' ').nil? }
+      end
+
+      def prepare_subcommands
+        return if single?
+        prefix = "#{@main.full_name} "
+        @commands.each do |cmd|
+          next if cmd == @main
+          next cmd.name.delete_prefix!(prefix) if cmd.name.start_with?(prefix)
+          raise(InvalidSubcommandNameError.new(@main.name, cmd.name))
+        end
+      end
+
+      def find_sub_command
+        args = @argv.take_while { |arg| arg[0] != '-' }
+        return @main if args.empty?
+        found = find_command(args)
+        found.nil? ? raise(InvalidCommandError.new(@main, args.first)) : found
+      end
+
+      def find_command(args)
+        args
+          .size
+          .downto(1) do |i|
+            name = args.take(i).join(' ')
+            cmd =
+              @commands.find do |command|
+                command != @main && command.name == name
+              end or next
+            @argv.shift(i)
+            return cmd
+          end
+        nil
+      end
+
+      def finalize
+        @commands
+          .map! do |command|
+            if command == @main
+              next @main = @current = command.to_cmd if @current == @main
+              next @main = command.to_cmd
+            end
+            next @current = command.to_cmd if command == @current
+            command.to_cmd
+          end
+          .sort_by(&:name)
+          .freeze
+      end
+    end
+
+    class SecondPass
+      def initialize(parser)
+        @parser = parser
+      end
+
+      def parse(argv)
+        add_definitions
+        @parser.parse(argv)
+      end
+
+      private
+
+      def add_definitions
+        @parser.each_line do |line|
+          case line
+          when /\A\s+-([[:alnum:]]), --([[[:alnum:]]-]+)[ :]<([[:lower:]]+)>\s+\S+/
+            option(Regexp.last_match)
+          when /\A\s+-{1,2}([[[:alnum:]]-]+)[ :]<([[:lower:]]+)>\s+\S+/
+            simple_option(Regexp.last_match)
+          when /\A\s+-([[:alnum:]]), --([[[:alnum:]]-]+)\s+\S+/
+            switch(Regexp.last_match)
+          when /\A\s+-{1,2}([[[:alnum:]]-]+)\s+\S+/
+            simple_switch(Regexp.last_match[1])
+          end
+        end
+      end
+
+      def option(match)
+        @parser.option(match[1], match[3])
+        @parser.option(match[2], match[3])
+      end
+
+      def simple_option(match)
+        @parser.option(match[1], match[2])
+      end
+
+      def switch(match)
+        @parser.switch(match[1], match[2])
+        @parser.switch(match[2], match[2])
+      end
+
+      def simple_switch(name)
+        @parser.switch(name, name)
+      end
+    end
+  end
+
   @on_error = ->(e) { $stderr.puts e or exit e.code }
   autoload(:Conversion, File.expand_path('./parse-argv/conversion', __dir__))
 
   private_constant(
-    :ArgumentMissingError,
     :Assembler,
-    :CommandParser,
+    :ArgumentMissingError,
     :DoublicateArgumentDefinitionError,
     :DoublicateCommandDefinitionError,
     :DoublicateOptionDefinitionError,
@@ -668,7 +717,6 @@ module ParseArgv
     :TooManyArgumentsError,
     :UnknonwOptionError,
     :UnknownAttribute,
-    :UnknownAttributeConverter,
-    :UsageLineMissingError
+    :UnknownAttributeConverter
   )
 end
