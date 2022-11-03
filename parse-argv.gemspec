@@ -8,10 +8,14 @@ Gem::Specification.new do |spec|
   spec.summary = 'A command line parser that only needs your help text.'
   spec.description = <<~DESCRIPTION
     Just write the help text for your application and ParseArgv will take care
-    of the command line for you. It's kind of the reverse of OptParse, where
-    you code a lot to get a command line parser with help text support.
-    ParseArgv works for simple commands, as well as for CLI with subcommands
-    (git-like apps).
+    of your command line. It works sort of the other way around than OptParse,
+    where you write a lot of code to get a command line parser and generated
+    help text. ParseArgv simply takes your help text and parses the command
+    line and presents you the results.
+
+    You can use ParseArgv for simpler programs just as well as for CLI with
+    multi-level sub-commands (git-like commands). ParseArgv is easy to use,
+    fast and also helps you convert the data types of command line arguments.
   DESCRIPTION
 
   spec.author = 'Mike Blumtritt'
