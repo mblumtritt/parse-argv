@@ -6,13 +6,15 @@ RSpec.describe 'subcommands' do
   subject(:result) { ParseArgv.from(help_text, argv) }
 
   let(:help_text) { <<~HELP }
+    ### main command:
+
     This is a definition for a multi-command CLI (like git).
 
     Usage: multi [options] <command>
 
     Commands:
       foo       foo command
-      foo bar   foo sub-command bar
+      foo bar   foo subcommand bar
       baz       baz sample command
       help      help command
       version   version command
@@ -23,19 +25,19 @@ RSpec.describe 'subcommands' do
 
     Use `multi help <command>` to get command specific help
 
-    ############################################################################
+    ### subcommand foo:
 
     Header text for command foo.
 
     Usage: multi foo [options] <parameter>
 
-    This is the 'foo' command. Notice there is a `foo bar` sub-command.
+    This is the 'foo' command. Notice there is a `foo bar` subcommand.
 
     Options:
       -s, --switch             simpe switch (boolean option)
       -o, --option <option>    option with parameter
 
-    ############################################################################
+    #### subcommand foo bar:
 
     Usage: multi foo bar [options] [<files>...]
 
@@ -50,7 +52,7 @@ RSpec.describe 'subcommands' do
     Show help or <command> specific help.
   HELP
 
-  context 'when no sub-command command was specified' do
+  context 'when no subcommand command was specified' do
     let(:argv) { [] }
 
     it 'raises an error' do
@@ -87,10 +89,10 @@ RSpec.describe 'subcommands' do
     end
   end
 
-  context 'sub-command: foo' do
+  context 'subcommand: foo' do
     let(:argv) { %w[foo -s -o opt arg1] }
 
-    it 'returns the sub-command' do
+    it 'returns the subcommand' do
       expect(result.current_command.name).to eq 'foo'
     end
 
@@ -101,10 +103,10 @@ RSpec.describe 'subcommands' do
     end
   end
 
-  context 'sub-command: foo bar' do
+  context 'subcommand: foo bar' do
     let(:argv) { %w[foo bar -s -o opt arg1] }
 
-    it 'returns the sub-command' do
+    it 'returns the subcommand' do
       expect(result.current_command.name).to eq 'foo bar'
     end
 
@@ -115,10 +117,10 @@ RSpec.describe 'subcommands' do
     end
   end
 
-  context 'sub-command: help' do
+  context 'subcommand: help' do
     let(:argv) { %w[help] }
 
-    it 'returns the sub-command' do
+    it 'returns the subcommand' do
       expect(result.current_command.name).to eq 'help'
     end
 
@@ -127,10 +129,10 @@ RSpec.describe 'subcommands' do
     end
   end
 
-  context 'sub-command: help foo bar' do
+  context 'subcommand: help foo bar' do
     let(:argv) { %w[help foo bar] }
 
-    it 'returns the sub-command' do
+    it 'returns the subcommand' do
       expect(result.current_command.name).to eq 'help'
     end
 

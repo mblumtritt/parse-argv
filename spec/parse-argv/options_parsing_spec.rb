@@ -7,7 +7,7 @@ RSpec.describe 'command parsing' do
     context 'when a long format and a shortcut are defined' do
       let(:help_text) { <<~HELP }
         usage: test
-          -s, --switch   simple switch
+          -s, --switch  simple switch
       HELP
 
       it 'accepts the long format' do
@@ -22,7 +22,7 @@ RSpec.describe 'command parsing' do
     context 'when only the long format is defined' do
       let(:help_text) { <<~HELP }
         usage: test
-          --switch   simple switch
+          --switch  simple switch
       HELP
 
       it 'accepts the long format' do
@@ -33,7 +33,7 @@ RSpec.describe 'command parsing' do
     context 'when only the shortcut format is defined' do
       let(:help_text) { <<~HELP }
         usage: test
-          -s   simple switch
+          -s  simple switch
       HELP
 
       it 'accepts the shortcut format' do
@@ -46,7 +46,7 @@ RSpec.describe 'command parsing' do
     context 'when a long format and a shortcut are defined' do
       let(:help_text) { <<~HELP }
         usage: test
-          -o, --opt <option>    option with parameter
+          -o, --opt <option>  option with parameter
       HELP
 
       it 'accepts the long format' do
@@ -65,7 +65,7 @@ RSpec.describe 'command parsing' do
     context 'when only the long format is defined' do
       let(:help_text) { <<~HELP }
         usage: test
-          --opt <option>    option with parameter
+          --opt <option>  option with parameter
       HELP
 
       it 'accepts the long format' do
@@ -78,7 +78,7 @@ RSpec.describe 'command parsing' do
     context 'when only the shortcut format is defined' do
       let(:help_text) { <<~HELP }
         usage: test
-          -o <option>    option with parameter
+          -o <option> option with parameter
       HELP
 
       it 'accepts the shortcut format' do
@@ -135,8 +135,8 @@ RSpec.describe 'command parsing' do
   context 'when an option/switch name is already used' do
     let(:help_text) { <<~HELP }
       usage: test
-        -s, --switch   a switch
-        -s, --stop     another switch
+        -s, --switch  a switch
+        -s, --stop    another switch
     HELP
 
     it 'raises an error' do
@@ -152,13 +152,36 @@ RSpec.describe 'command parsing' do
       This is some header text before the usage line.
 
       usage: test
-        -s, --switch   a switch
+        -s, --switch  a switch
 
       This is the footer text.
     HELP
 
     it 'includes the help header text' do
       expect(ParseArgv.from(help_text, %w[]).to_s).to eq help_text.chomp
+    end
+
+    context 'when sub-commands are used' do
+      let(:help_text) { <<~HELP }
+        Main command
+        usage: test <command>
+
+        #
+
+        A sub-command
+
+        usage: test sub
+          Try it out!
+      HELP
+
+      it 'includes the help header text' do
+        expect(ParseArgv.from(help_text, %w[sub]).to_s).to eq(<<~EXPEXTED.chomp)
+          A sub-command
+
+          usage: test sub
+            Try it out!
+        EXPEXTED
+      end
     end
   end
 end

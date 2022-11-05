@@ -276,6 +276,16 @@ RSpec.describe 'argument conversion' do
         end
       end
     end
+
+    context 'when a reference date is given' do
+      let(:argv) { %w[--opt 17] }
+
+      it 'uses the reference to complete the result' do
+        expect(result.as(:date, :value, reference: Date.new(2000, 9))).to eq(
+          Date.new(2000, 9, 17)
+        )
+      end
+    end
   end
 
   context ':time' do
@@ -321,10 +331,20 @@ RSpec.describe 'argument conversion' do
         end
       end
     end
+
+    context 'when a reference date is given' do
+      let(:argv) { %w[--opt 13:14] }
+
+      it 'uses the reference to complete the result' do
+        expect(result.as(:time, :value, reference: Date.new(2000, 9, 8))).to eq(
+          Time.new(2000, 9, 8, 13, 14)
+        )
+      end
+    end
   end
 
   context ':file_name' do
-    let(:type){ :file_name }
+    let(:type) { :file_name }
     let(:argv) { %w[--opt file.ext] }
 
     it 'returns the correct value' do
@@ -352,7 +372,7 @@ RSpec.describe 'argument conversion' do
   end
 
   context ':file' do
-    let(:type){ :file }
+    let(:type) { :file }
     let(:argv) { ['--opt', __FILE__] }
 
     it 'returns the correct value' do
@@ -410,7 +430,7 @@ RSpec.describe 'argument conversion' do
   end
 
   context ':directory' do
-    let(:type){ :directory }
+    let(:type) { :directory }
     let(:argv) { ['--opt', __dir__] }
 
     it 'returns the correct value' do
@@ -468,7 +488,7 @@ RSpec.describe 'argument conversion' do
   end
 
   context ':array' do
-    let(:type){ :array }
+    let(:type) { :array }
     let(:argv) { ['--opt', '[aaaa,  bbb,cc  ,,d]'] }
 
     it 'returns the correct value' do
@@ -496,7 +516,7 @@ RSpec.describe 'argument conversion' do
   end
 
   context 'Array<String>' do
-    let(:type){ %w[one two three] }
+    let(:type) { %w[one two three] }
     let(:argv) { %w[--opt two] }
 
     it 'returns the correct value' do
@@ -532,7 +552,7 @@ RSpec.describe 'argument conversion' do
   end
 
   context '[<type>]' do
-    let(:type){ [:positive] }
+    let(:type) { [:positive] }
     let(:argv) { %w[--opt [1,2,3]] }
 
     it 'returns the correct value' do
@@ -560,7 +580,7 @@ RSpec.describe 'argument conversion' do
   end
 
   context 'Regular Expression' do
-    let(:type){ /\Ate+st\z/ }
+    let(:type) { /\Ate+st\z/ }
     let(:argv) { %w[--opt teeeeest] }
 
     it 'returns the correct value' do
@@ -590,7 +610,7 @@ RSpec.describe 'argument conversion' do
       let(:value) { result.as(/\At(e+)st\z/, :value, :match) }
 
       it 'returns the Regexp::Match' do
-        expect(value).to eq /\At(e+)st\z/.match('teeeeest')
+        expect(value).to eq(/\At(e+)st\z/.match('teeeeest'))
       end
     end
   end
@@ -645,9 +665,7 @@ RSpec.describe 'argument conversion' do
       Array => :array
     }.each_pair do |aliased, type|
       it "defines #{aliased.inspect} as alias for type :#{type}" do
-        expect(
-          ParseArgv::Conversion.for(aliased)
-        ).to be ParseArgv::Conversion.for(type)
+        expect(ParseArgv::Conversion[aliased]).to be ParseArgv::Conversion[type]
       end
     end
   end

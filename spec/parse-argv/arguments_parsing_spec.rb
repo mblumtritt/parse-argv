@@ -9,7 +9,7 @@ RSpec.describe 'arguments parsing' do
     This is a demo for the command 'simple', which accepts some options, an
     optional <input> name and a required <output> name.
 
-    Usage: simple [options] <input> [<output>]
+    Usage: test [options] <input> [<output>]
 
     Options need not to be defined in one paragraph, multiple definitions are
     allowed.
@@ -36,7 +36,7 @@ RSpec.describe 'arguments parsing' do
     it 'raises an ParseArgv::Error' do
       expect { result }.to raise_error(
         ParseArgv::Error,
-        'simple: argument missing - <input>'
+        'test: argument missing - <input>'
       )
     end
 
@@ -63,7 +63,7 @@ RSpec.describe 'arguments parsing' do
     it 'raises an ParseArgv::Error' do
       expect { result }.to raise_error(
         ParseArgv::Error,
-        'simple: too many arguments'
+        'test: too many arguments'
       )
     end
   end
@@ -164,7 +164,7 @@ RSpec.describe 'arguments parsing' do
     it 'raises an error' do
       expect { result }.to raise_error(
         ParseArgv::Error,
-        "simple: argument <option> missing - '-o'"
+        "test: argument <option> missing - '-o'"
       )
     end
   end
@@ -175,7 +175,7 @@ RSpec.describe 'arguments parsing' do
     it 'raises an error' do
       expect { result }.to raise_error(
         ParseArgv::Error,
-        "simple: unknown option - '--foo'"
+        "test: unknown option - '--foo'"
       )
     end
   end
