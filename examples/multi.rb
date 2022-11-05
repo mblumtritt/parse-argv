@@ -3,7 +3,6 @@
 require_relative '../lib/parse-argv'
 
 Argv = ParseArgv.from <<~HELP
-
   ParseArgv Demo for a CLI with subcommands
   This example demonstrates a CLI with subcommands. It processes an imganinary
   key/value store that can be synchronized with a server.
@@ -56,7 +55,6 @@ Argv = ParseArgv.from <<~HELP
   usage: multi help [<command>...]
 
   Show help for given <command>.
-
 HELP
 
 case Argv.current_command.name
@@ -71,7 +69,7 @@ when 'help'
     puts(Argv.main_command.help)
   end
 else
-  puts "command '#{Argv.current_command.name}':"
+  puts "command '#{Argv.current_command}':"
   attributes = Argv.to_h
   unless attributes.empty?
     width = attributes.keys.max_by(&:size).size + 3
