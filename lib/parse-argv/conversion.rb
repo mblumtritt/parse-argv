@@ -4,67 +4,83 @@ module ParseArgv
   module Conversion
     class << self
       #
-      # Requests for a conversion procedure.
+      # Get a conversion procedure.
       #
-      # @overload for(type)
-      #   @param type [Symbol, Class] name or class of the conversion procedure
-      #   @raise [ArgumentError] when no conversion procedure was defined
-      #   @example
-      #     ParseArgv::Conversion.for(:file)
-      #     ParseArgv::Conversion.for(File)
+      # The requested +type+ specifies the type of returned conversion
+      # procedure:
       #
-      # @overload for(array)
-      #   @param array [Array<String>] conversion procedure checking if an
-      #     argument is included in +array+.
-      #   @example
-      #     ParseArgv::Conversion.for(%w[foo bar baz])
+      #   - Symbol: a defined procedure; see {.define}
+      #   - Class: procedure associated to the given Class
+      #   - Array<String>: procedure to pass only given strings
+      #   - Array(type): procedure returning converted elements of argument
+      #     array
+      #   - Regexp: procedure which passes matching arguments
       #
-      # @overload for(type_array)
-      #   @param type_array [Array] Array with one type element
-      #   @example
-      #     ParseArgv::Conversion.for([:integer])
-      #     ParseArgv::Conversion.for([Integer])
-      #
-      # @overload for(regexp)
-      #   @param regexp [Regexp] conversion procedure checking if an argument
-      #     matches the regular expression
-      #   @example
-      #     ParseArgv::Conversion.for(/\A\w+_test\z/)
-      #
+      # @param type [Symbol, Class, Array<String>, Array(type), Regexp]
       # @return [#call] conversion procedure
       #
-      def for(type)
+      # @example type is a Symbol
+      #   ParseArgv::Conversion[:downcase]
+      #   # => Proc which converts an argument to lower case
+      #   ParseArgv::Conversion[:downcase].call('HELLo')
+      #   # => "HELLO"
+      #
+      # @example type is a Class
+      #   ParseArgv::Conversion[Time]
+      #   # => Proc which converts an argument to a Time object
+      #   ParseArgv::Conversion[Time].call('2022-01-02 12:13 CET')
+      #   # => "2022-01-02 12:13:00 +0100"
+      #
+      # @example type is a Array<String>
+      #   ParseArgv::Conversion[%w[foo bar baz]]
+      #   # => Proc which allows only an argument 'foo', 'bar', or 'baz'
+      #   ParseArgv::Conversion[%w[foo bar baz]].call('bar')
+      #   # => "bar"
+      #
+      # @example type is a Array(type)
+      #   ParseArgv::Conversion[[:positive]]
+      #   # => Proc which converts an argument array to positive Integers
+      #   ParseArgv::Conversion[[:positive]].call('[42, 21]')
+      #   # => [42, 21]
+      #
+      # @example type is a Regexp
+      #   Conversion[/\Ate+st\z/]
+      #   # => Proc which allows only an argument matching the Regexp
+      #   Conversion[/\Ate+st\z/].call('teeeeeeest')
+      #   # => "teeeeeeest"
+      #
+      def [](type)
         @ll.fetch(type) do
           next regexp_match(type) if type.is_a?(Regexp)
           next array_type(type) if type.is_a?(Array)
-          @ll.fetch(type.to_sym) { raise(UnknownAttributeConverter, type) }
+          @ll.fetch(type.to_sym) { raise(UnknownAttributeConverterError, type) }
         end
       end
 
       #
-      # Define the conversion procedure for specified +name+.
-      #
       # @overload define(name, &block)
+      #   Define the conversion procedure for specified +name+.
       #   @param name [Symbol] conversion procedure name
       #   @param block [Proc] conversion procedure
+      #
       #   @example define the type +:odd_number+
       #     ParseArgv::Conversion.define(:odd_number) do |arg, &err|
       #       result = arg.to_i
-      #       result.odd? || err['not an odd number']
-      #       result
+      #       result.odd? ? result : err['not an odd number']
       #     end
       #
       # @overload define(new_name, old_name)
       #   Creates an alias between two conversion procedures.
       #   @param new_name [Symbol] new name for the handler
       #   @param old_name [Symbol] name of existing handler
+      #
       #   @example define the alias +:odd+ for the existing type +:odd_number+
       #     ParseArgv::Conversion.define(:odd, :odd_number)
       #
       # @return [Conversion] itself
       #
       def define(name, old_name = nil, &block)
-        @ll[name] = old_name.nil? ? block : self.for(old_name)
+        @ll[name] = old_name.nil? ? block : self[old_name]
         self
       end
 
@@ -90,13 +106,12 @@ module ParseArgv
 
       def array_type(ary)
         return one_of(ary.map(&:to_s).map!(&:strip)) if ary.size != 1
-        array_of(Conversion.for(ary.first))
+        array_of(Conversion[ary.first])
       end
 
       def array_of(type)
         proc do |arg, *args, **opts, &err|
-          Conversion
-            .for(:array)
+          Conversion[:array]
             .call(arg, &err)
             .map! { |a| type.call(a, *args, **opts, &err) }
         end
@@ -128,7 +143,7 @@ module ParseArgv
     end
 
     define(:file_name) do |arg, &err|
-      File.expand_path(Conversion.for(:string).call(arg, &err))
+      File.expand_path(Conversion[:string].call(arg, &err))
     end
 
     define(:positive) do |arg, &err|
@@ -153,7 +168,7 @@ module ParseArgv
 
     define(:regexp) do |arg, &err|
       Regexp.new(
-        Conversion.for(:string).call(
+        Conversion[:string].call(
           arg.delete_prefix('/').delete_suffix('/'),
           &err
         )
@@ -173,11 +188,11 @@ module ParseArgv
     end
     define(Array, :array)
 
-    define(:date) do |arg, &err|
-      require('date') unless defined?(::Date)
+    define(:date) do |arg, reference: nil, &err|
+      defined?(::Date) || require('date')
       ret = Date._parse(arg)
       err['argument must be a date'] if ret.empty?
-      ref = Date.today
+      ref = reference || Date.today
       Date.new(
         ret[:year] || ref.year,
         ret[:mon] || ref.mon,
@@ -186,12 +201,13 @@ module ParseArgv
     rescue Date::Error
       err['argument must be a date']
     end
+    defined?(::Date) && define(Date, :date)
 
-    define(:time) do |arg, &err|
-      require('date') unless defined?(::Date)
+    define(:time) do |arg, reference: nil, &err|
+      defined?(::Date) || require('date')
       ret = Date._parse(arg)
       err['argument must be a time'] if ret.empty?
-      ref = Date.today
+      ref = reference || Date.today
       Time.new(
         ret[:year] || ref.year,
         ret[:mon] || ref.month,
@@ -201,10 +217,13 @@ module ParseArgv
         ret[:sec] || 0,
         ret[:offset]
       )
+    rescue Date::Error
+      err['argument must be a time']
     end
+    define(Time, :time)
 
     define(:file) do |arg, *args, &err|
-      fname = Conversion.for(:file_name).call(arg, &err)
+      fname = Conversion[:file_name].call(arg, &err)
       stat = File.stat(fname)
       err['argument must be a file'] unless stat.file?
       args.each do |arg|
@@ -220,7 +239,7 @@ module ParseArgv
     define(File, :file)
 
     define(:directory) do |arg, *args, &err|
-      fname = Conversion.for(:file_name).call(arg, &err)
+      fname = Conversion[:file_name].call(arg, &err)
       stat = File.stat(fname)
       err['argument must be a directory'] unless stat.directory?
       args.each do |arg|
