@@ -336,7 +336,7 @@ RSpec.describe 'argument conversion' do
       let(:argv) { %w[--opt 13:14] }
 
       it 'uses the reference to complete the result' do
-        expect(result.as(:time, :value, reference: Date.new(2000, 9, 8))).to eq(
+        expect(result.as(:time, :value, reference: Time.new(2000, 9, 8))).to eq(
           Time.new(2000, 9, 8, 13, 14)
         )
       end

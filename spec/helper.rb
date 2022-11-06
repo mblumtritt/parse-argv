@@ -4,10 +4,6 @@ require 'rspec/core'
 require_relative '../lib/parse-argv'
 
 $stdout.sync = $stderr.sync = true
-
-RSpec.configure do |config|
-  config.disable_monkey_patching!
-  config.warnings = true
-end
-
+$VERBOSE = true
+RSpec.configure { |config| config.disable_monkey_patching! }
 ParseArgv.on_error(:raise)
