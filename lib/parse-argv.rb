@@ -195,10 +195,10 @@ module ParseArgv
     # @param type [Symbol, Class, Array<String>, Array(type), Regexp]
     #   conversion type, see {Conversion.[]}
     # @param name [Symbol, String] argument name
-    # @param *args [Array<Object>] optional arguments to be forwarded to the
+    # @param args [Array<Object>] optional arguments to be forwarded to the
     #   conversion
     # @param default [Object] returned, when an argument was not specified
-    # @param **kwargs [Symbol => Object] optional named arguments forwarded to the conversion
+    # @param kwargs [Symbol => Object] optional named arguments forwarded to the conversion
     # @return [Object] converted argument or +default+
     #
     # @see Conversion
@@ -485,7 +485,6 @@ module ParseArgv
       }.compare_by_identity
     end
 
-    # @!visibility private
     class CommandParser < Command
       def initialize(name, help)
         super
@@ -681,6 +680,8 @@ module ParseArgv
         @options[checked_opt(name)] = "!#{name}"
       end
     end
+
+    private_constant(:Prepare, :Commands, :CommandParser)
   end
 
   class InvalidCommandError < Error

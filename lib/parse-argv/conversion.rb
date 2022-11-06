@@ -1,23 +1,110 @@
 # frozen_string_literal: true
 
 module ParseArgv
+  #
+  # The Conversion module provides an interface to convert String arguments to
+  # different types and is used by the {Result#as} method.
+  #
+  # Besides the build-in defined types custom conversion functions can be
+  # defined with {Conversion.define}.
+  #
+  # In general a conversion function is a Proc which gets called with a String
+  # argument, an error handler and - optional - with function-specific
+  # arguments and options.
+  #
+  # The conversion function should convert the given String argument and return
+  # the result. When it's impossible to convert the argument the error handler
+  # have to be called with a descriptive error message.
+  #
+  # Here is an example for a conversion function of even Integer:
+  #
+  # ```
+  # ParseArgv::Conversion.define(:even_number) do |arg, &err|
+  #   /\A-?\d+/.match?(arg) or err['argument have to be an even integer']
+  #   result = arg.to_i
+  #   result.even? ? result : err['not an even integer']
+  # end
+  # ```
+  #
+  # ## Build-In Conversion Functions
+  #
+  # <table>
+  # <thead><th>Name</th><th>Alias</th><th>Description</th></thead>
+  # <tbody>
+  #   <tr>
+  #     <td>:integer</td><td>Integer, :int</td>
+  #     <td>
+  #       simply convert to <code>Integer</code>; uses <code>String#to_i</code>
+  #      </td>
+  #   </tr>
+  #   <tr>
+  #     <td>:float</td><td>Float</td>
+  #     <td>
+  #       simply convert to <code>Float</code> ; uses <code>String#to_f</code>
+  #     </td>
+  #   </tr>
+  #   <tr>
+  #     <td>:string</td><td>String, :str</td>
+  #     <td>passes a non-empty string argument</td>
+  #   </tr>
+  #   <tr>
+  #     <td>:file_name</td><td></td>
+  #     <td>convert to file name; uses <code>File#expand_path</code></td>
+  #   </tr>
+  #   <tr>
+  #     <td>:regexp</td><td>Regexp, :regex</td>
+  #     <td>convert to a <code>Regexp</code></td>
+  #   </tr>
+  #   <tr>
+  #     <td>:array</td><td>Array</td>
+  #     <td>convert to a <code>Array&lt;String&gt;</code></td>
+  #   </tr>
+  #   <tr>
+  #     <td>:date</td><td></td>
+  #     <td>
+  #       convert to a <code>Date</code>; accepts optional a <code>Date</code>
+  #       or <code>Time</code> as :reference option
+  #     </td>
+  #   </tr>
+  #   <tr>
+  #     <td>:time</td><td>Time</td>
+  #     <td>convert to a <code>Time</code>>; accepts optional a <code>Date</code> or <code>Time</code> as :reference option</td>
+  #   </tr>
+  #   <tr>
+  #     <td>:file</td><td>File</td>
+  #     <td>
+  #       convert to a file name; checks if the file exists; allows additional
+  #       checks like :blockdev, :chardev, :grpowned, :owned, :readable,
+  #       :readable_real, :setgid, :setuid, :size, :socket, :sticky, :symlink
+  #       :world_readable, :world_writeable, :writable, :writable_real, :zero
+  #    </td>
+  #   </tr>
+  #   <tr>
+  #     <td>:directory</td><td>Dir, :dir</td>
+  #     <td>
+  #       convert to a directory name; checks if the directory exists; allows
+  #       additional check like the :file conversion (above)
+  #     </td>
+  #   </tr>
+  # </tbody></table>
+  #
   module Conversion
     class << self
       #
-      # Get a conversion procedure.
+      # Get a conversion function.
       #
       # The requested +type+ specifies the type of returned conversion
-      # procedure:
+      # function:
       #
-      #   - Symbol: a defined procedure; see {.define}
-      #   - Class: procedure associated to the given Class
-      #   - Array<String>: procedure to pass only given strings
-      #   - Array(type): procedure returning converted elements of argument
+      #   - Symbol: a defined function; see {.define}
+      #   - Class: function associated to the given Class
+      #   - Array<String>: function to pass only given strings
+      #   - Array(type): function returning converted elements of argument
       #     array
-      #   - Regexp: procedure which passes matching arguments
+      #   - Regexp: function which passes matching arguments
       #
       # @param type [Symbol, Class, Array<String>, Array(type), Regexp]
-      # @return [#call] conversion procedure
+      # @return [#call] conversion function
       #
       # @example type is a Symbol
       #   ParseArgv::Conversion[:downcase]
@@ -58,10 +145,13 @@ module ParseArgv
       end
 
       #
+      # Define a conversion function or an alias between two conversion
+      # functions.
+      #
       # @overload define(name, &block)
-      #   Define the conversion procedure for specified +name+.
-      #   @param name [Symbol] conversion procedure name
-      #   @param block [Proc] conversion procedure
+      #   Define the conversion function for specified +name+.
+      #   @param name [Symbol] conversion function name
+      #   @param block [Proc] conversion function
       #
       #   @example define the type +:odd_number+
       #     ParseArgv::Conversion.define(:odd_number) do |arg, &err|
@@ -70,7 +160,7 @@ module ParseArgv
       #     end
       #
       # @overload define(new_name, old_name)
-      #   Creates an alias between two conversion procedures.
+      #   Creates an alias between two conversion functions.
       #   @param new_name [Symbol] new name for the handler
       #   @param old_name [Symbol] name of existing handler
       #
@@ -122,7 +212,28 @@ module ParseArgv
 
     define(:int, :integer)
     define(Integer, :integer)
+
+    define(:positive) do |arg, &err|
+      arg = Conversion[:integer].call(arg, &err)
+      arg.positive? ? arg : err['positive number expected']
+    end
+
+    define(:negative) do |arg, &err|
+      arg = Conversion[:integer].call(arg, &err)
+      arg.negative? ? arg : err['negative number expected']
+    end
+
     define(Float, :float)
+
+    define(:float_positive) do |arg, &err|
+      arg = Conversion[:float].call(arg, &err)
+      arg.positive? ? arg : err['positive float number expected']
+    end
+
+    define(:float_negative) do |arg, &err|
+      arg = Conversion[:float].call(arg, &err)
+      arg.negative? ? arg : err['negative float number expected']
+    end
 
     define(:string) do |arg, &err|
       arg.empty? ? err['argument can not be empty'] : arg
@@ -130,40 +241,8 @@ module ParseArgv
     define(:str, :string)
     define(String, :string)
 
-    define(:upcase) do |arg, &err|
-      arg.empty? ? err['argument can not be empty'] : arg.upcase
-    end
-
-    define(:downcase) do |arg, &err|
-      arg.empty? ? err['argument can not be empty'] : arg.downcase
-    end
-
-    define(:capitalze) do |arg, &err|
-      arg.empty? ? err['argument can not be empty'] : arg.capitalze
-    end
-
     define(:file_name) do |arg, &err|
       File.expand_path(Conversion[:string].call(arg, &err))
-    end
-
-    define(:positive) do |arg, &err|
-      arg = arg.to_i
-      arg.positive? ? arg : err['positive number expected']
-    end
-
-    define(:negative) do |arg, &err|
-      arg = arg.to_i
-      arg.negative? ? arg : err['negative number expected']
-    end
-
-    define(:float_positive) do |arg, &err|
-      arg = arg.to_f
-      arg.positive? ? arg : err['positive float number expected']
-    end
-
-    define(:float_negative) do |arg, &err|
-      arg = arg.to_f
-      arg.negative? ? arg : err['negative float number expected']
     end
 
     define(:regexp) do |arg, &err|
