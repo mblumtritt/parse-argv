@@ -32,19 +32,28 @@ module ParseArgv
   # <thead><th>Name</th><th>Alias</th><th>Description</th></thead>
   # <tbody>
   #   <tr>
-  #     <td>:integer</td><td>Integer, :int</td>
+  #     <td>:integer</td><td>Integer</td>
   #     <td>
-  #       simply convert to <code>Integer</code>; uses <code>String#to_i</code>
+  #       convert to <code>Integer</code>; it allows additional checks like
+  #       :positive, :negative, :nonzero
   #      </td>
   #   </tr>
   #   <tr>
   #     <td>:float</td><td>Float</td>
   #     <td>
-  #       simply convert to <code>Float</code> ; uses <code>String#to_f</code>
+  #       convert to <code>Float</code>; it allows additional checks like
+  #       :positive, :negative, :nonzero
   #     </td>
   #   </tr>
   #   <tr>
-  #     <td>:string</td><td>String, :str</td>
+  #     <td>:number</td><td>Numeric</td>
+  #     <td>
+  #       convert to <code>Float</code> or <code>Integer</code>; it
+  #       allows additional checks like :positive, :negative, :nonzero
+  #     </td>
+  #   </tr>
+  #   <tr>
+  #     <td>:string</td><td>String</td>
   #     <td>passes a non-empty string argument</td>
   #   </tr>
   #   <tr>
@@ -52,7 +61,7 @@ module ParseArgv
   #     <td>convert to file name; uses <code>File#expand_path</code></td>
   #   </tr>
   #   <tr>
-  #     <td>:regexp</td><td>Regexp, :regex</td>
+  #     <td>:regexp</td><td>Regexp</td>
   #     <td>convert to a <code>Regexp</code></td>
   #   </tr>
   #   <tr>
@@ -60,7 +69,7 @@ module ParseArgv
   #     <td>convert to a <code>Array&lt;String&gt;</code></td>
   #   </tr>
   #   <tr>
-  #     <td>:date</td><td></td>
+  #     <td>:date</td><td>Date</td>
   #     <td>
   #       convert to a <code>Date</code>; accepts optional a <code>Date</code>
   #       or <code>Time</code> as :reference option
@@ -80,7 +89,7 @@ module ParseArgv
   #    </td>
   #   </tr>
   #   <tr>
-  #     <td>:directory</td><td>Dir, :dir</td>
+  #     <td>:directory</td><td>Dir</td>
   #     <td>
   #       convert to a directory name; checks if the directory exists; allows
   #       additional check like the :file conversion (above)
@@ -208,41 +217,63 @@ module ParseArgv
       end
     end
 
-    @ll = { integer: proc { |arg| arg.to_i }, float: proc { |arg| arg.to_f } }
+    @ll = {}
 
-    define(:int, :integer)
+    define(:integer) do |arg, type = nil, &err|
+      /\A-?\d+/.match?(arg) or err['argument have to be an integer']
+      arg = arg.to_i
+      case type
+      when :positive
+        arg.positive? or err['positive integer number expected']
+      when :negative
+        arg.negative? or err['negative integer number expected']
+      when :nonzero
+        arg.nonzero? or err['nonzero integer number expected']
+      end
+      arg
+    end
     define(Integer, :integer)
 
-    define(:positive) do |arg, &err|
-      arg = Conversion[:integer].call(arg, &err)
-      arg.positive? ? arg : err['positive number expected']
+    define(:float) do |arg, type = nil, &err|
+      /\A[\+\-]?\d*\.?\d+(?:[Ee][\+\-]?\d+)?/.match?(arg) or
+        err['argument have to be a float number']
+      arg = arg.to_f
+      case type
+      when :positive
+        arg.positive? or err['positive float number expected']
+      when :negative
+        arg.negative? or err['negative float number expected']
+      when :nonzero
+        arg.nonzero? or err['nonzero float number expected']
+      end
+      arg
     end
-
-    define(:negative) do |arg, &err|
-      arg = Conversion[:integer].call(arg, &err)
-      arg.negative? ? arg : err['negative number expected']
-    end
-
     define(Float, :float)
 
-    define(:float_positive) do |arg, &err|
-      arg = Conversion[:float].call(arg, &err)
-      arg.positive? ? arg : err['positive float number expected']
+    define(:number) do |arg, type = nil, &err|
+      /\A[\+\-]?\d*\.?\d+(?:[Ee][\+\-]?\d+)?/.match?(arg) or
+        err['argument have to be a number']
+      arg = arg.to_f
+      arg = arg.to_i if arg.integer?
+      case type
+      when :positive
+        arg.positive? or err['positive number expected']
+      when :negative
+        arg.negative? or err['negative number expected']
+      when :nonzero
+        arg.nonzero? or err['nonzero number expected']
+      end
+      arg
     end
-
-    define(:float_negative) do |arg, &err|
-      arg = Conversion[:float].call(arg, &err)
-      arg.negative? ? arg : err['negative float number expected']
-    end
+    define(Numeric, :number)
 
     define(:string) do |arg, &err|
       arg.empty? ? err['argument can not be empty'] : arg
     end
-    define(:str, :string)
     define(String, :string)
 
-    define(:file_name) do |arg, &err|
-      File.expand_path(Conversion[:string].call(arg, &err))
+    define(:file_name) do |arg, dir: nil, &err|
+      File.expand_path(Conversion[:string].call(arg, &err), dir)
     end
 
     define(:regexp) do |arg, &err|
@@ -255,7 +286,6 @@ module ParseArgv
     rescue RegexpError => e
       err["invalid regular expression; #{e}"]
     end
-    define(:regex, :regexp)
     define(Regexp, :regexp)
 
     define(:array) do |arg, &err|
@@ -301,8 +331,8 @@ module ParseArgv
     end
     define(Time, :time)
 
-    define(:file) do |arg, *args, &err|
-      fname = Conversion[:file_name].call(arg, &err)
+    define(:file) do |arg, *args, **opts, &err|
+      fname = Conversion[:file_name].call(arg, **opts, &err)
       stat = File.stat(fname)
       err['argument must be a file'] unless stat.file?
       args.each do |arg|
@@ -317,8 +347,8 @@ module ParseArgv
     end
     define(File, :file)
 
-    define(:directory) do |arg, *args, &err|
-      fname = Conversion[:file_name].call(arg, &err)
+    define(:directory) do |arg, *args, **opts, &err|
+      fname = Conversion[:file_name].call(arg, **opts, &err)
       stat = File.stat(fname)
       err['argument must be a directory'] unless stat.directory?
       args.each do |arg|
@@ -331,7 +361,6 @@ module ParseArgv
     rescue Errno::ENOENT
       err['directory does not exist']
     end
-    define(:dir, :directory)
     define(Dir, :directory)
   end
 end
