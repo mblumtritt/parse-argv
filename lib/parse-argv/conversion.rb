@@ -146,11 +146,10 @@ module ParseArgv
       #   # => "teeeeeeest"
       #
       def [](type)
-        @ll.fetch(type) do
-          next regexp_match(type) if type.is_a?(Regexp)
-          next array_type(type) if type.is_a?(Array)
+        return regexp_match(type) if type.is_a?(Regexp)
+        return array_type(type) if type.is_a?(Array)
+        @ll[type] ||
           @ll.fetch(type.to_sym) { raise(UnknownAttributeConverterError, type) }
-        end
       end
 
       #

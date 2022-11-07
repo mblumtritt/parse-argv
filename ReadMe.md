@@ -19,8 +19,7 @@ This is a very early stage of the gem which means that some stuff is missing/jus
 Planned extensions are missing:
 
 - [ ]  extend tests
-- [ ]  add YARD documentation
-- [ ]  add examples
+- [ ]  add more examples
 
 <!-- ## Sample
 
