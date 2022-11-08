@@ -2,7 +2,7 @@
 
 require_relative '../helper'
 
-RSpec.describe 'parse arguments' do
+RSpec.describe 'arguments splatting' do
   context 'when all arguments are required' do
     let(:help_text) { 'usage: test <file1> <file2>' }
 

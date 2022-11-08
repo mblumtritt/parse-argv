@@ -184,6 +184,16 @@ RSpec.describe 'subcommands' do
         expect(result.option).to eq 'opt'
         expect(result.parameter).to eq 'arg1'
       end
+
+      it 'returns the main command' do
+        expect(result.main_command.name).to eq 'multi'
+      end
+
+      it 'returns all commands' do
+        expect(result.all_commands.map(&:name)).to eq(
+          ['baz', 'foo', 'foo bar', 'help', 'multi']
+        )
+      end
     end
 
     context 'subcommand: foo bar' do

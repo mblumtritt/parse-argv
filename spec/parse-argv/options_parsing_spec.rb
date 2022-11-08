@@ -2,7 +2,7 @@
 
 require_relative '../helper'
 
-RSpec.describe 'command parsing' do
+RSpec.describe 'options parsing' do
   context 'parse switches' do
     context 'when a long format and a shortcut are defined' do
       let(:help_text) { <<~HELP }

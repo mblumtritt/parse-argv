@@ -186,7 +186,7 @@ module ParseArgv
 
       def one_of(ary)
         proc do |arg, *opts, &err|
-          next arg if ary.include?(arg)
+          ary.include?(arg) and next arg
           err["argument must be one of #{ary.map { |s| "`#{s}`" }.join(', ')}"]
         end
       end
@@ -196,7 +196,7 @@ module ParseArgv
           if args.include?(:match)
             match = regexp.match(arg) and next match
           else
-            next arg if regexp.match?(arg)
+            regexp.match?(arg) and next arg
           end
           err["argument must match #{regexp}"]
         end
@@ -288,7 +288,7 @@ module ParseArgv
     define(Regexp, :regexp)
 
     define(:array) do |arg, &err|
-      arg = arg[1..-2] if arg.start_with?('[') && arg.end_with?(']')
+      arg = arg[1..-2] if arg[0] == '[' && arg[-1] == ']'
       arg = arg.split(',').map!(&:strip)
       arg.uniq!
       arg.delete('')
@@ -300,11 +300,11 @@ module ParseArgv
       defined?(::Date) || require('date')
       ret = Date._parse(arg)
       err['argument must be a date'] if ret.empty?
-      ref = reference || Date.today
+      reference ||= Date.today
       Date.new(
-        ret[:year] || ref.year,
-        ret[:mon] || ref.mon,
-        ret[:mday] || ref.mday
+        ret[:year] || reference.year,
+        ret[:mon] || reference.mon,
+        ret[:mday] || reference.mday
       )
     rescue Date::Error
       err['argument must be a date']
@@ -315,11 +315,11 @@ module ParseArgv
       defined?(::Date) || require('date')
       ret = Date._parse(arg)
       err['argument must be a time'] if ret.empty?
-      ref = reference || Date.today
+      reference ||= Date.today
       Time.new(
-        ret[:year] || ref.year,
-        ret[:mon] || ref.month,
-        ret[:mday] || ref.mday,
+        ret[:year] || reference.year,
+        ret[:mon] || reference.month,
+        ret[:mday] || reference.mday,
         ret[:hour] || 0,
         ret[:min] || 0,
         ret[:sec] || 0,
@@ -333,12 +333,11 @@ module ParseArgv
     define(:file) do |arg, *args, **opts, &err|
       fname = Conversion[:file_name].call(arg, **opts, &err)
       stat = File.stat(fname)
-      err['argument must be a file'] unless stat.file?
-      args.each do |arg|
-        name = "#{arg}?"
-        next unless stat.respond_to?(name)
-        next if stat.send(name)
-        err["file attribute `#{arg}` not satisfied"]
+      stat.file? or err['argument must be a file']
+      args.each do |att|
+        name = "#{att}?"
+        stat.respond_to?(name) or next
+        stat.send(name) or err["file attribute `#{att}` not satisfied"]
       end
       fname
     rescue Errno::ENOENT
@@ -349,12 +348,11 @@ module ParseArgv
     define(:directory) do |arg, *args, **opts, &err|
       fname = Conversion[:file_name].call(arg, **opts, &err)
       stat = File.stat(fname)
-      err['argument must be a directory'] unless stat.directory?
-      args.each do |arg|
-        name = "#{arg}?"
-        next unless stat.respond_to?(name)
-        next if stat.send(name)
-        err["directory attribute `#{arg}` not satisfied"]
+      stat.directory? or err['argument must be a directory']
+      args.each do |att|
+        name = "#{att}?"
+        stat.respond_to?(name) or next
+        stat.send(name) or err["directory attribute `#{att}` not satisfied"]
       end
       fname
     rescue Errno::ENOENT
