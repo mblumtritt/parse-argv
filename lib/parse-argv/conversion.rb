@@ -53,6 +53,15 @@ module ParseArgv
   #     </td>
   #   </tr>
   #   <tr>
+  #     <td>:byte</td><td></td>
+  #     <td>
+  #       convert to <code>Integer</code>; argument can have suffix
+  #       <code>k</code>ilo, <code>M</code>ega, <code>G</code>iga,
+  #       <code>T</code>era, <code>P</code>eta, <code>E</code>xa,
+  #       <code>Z</code>etta and <code>Y</code>otta ('0.5M' == 524288)
+  #     </td>
+  #   </tr>
+  #   <tr>
   #     <td>:string</td><td>String</td>
   #     <td>passes a non-empty string argument</td>
   #   </tr>
@@ -253,7 +262,8 @@ module ParseArgv
       /\A[\+\-]?\d*\.?\d+(?:[Ee][\+\-]?\d+)?/.match?(arg) or
         err['argument have to be a number']
       arg = arg.to_f
-      arg = arg.to_i if arg.integer?
+      argi = arg.to_i
+      arg = argi if argi == arg
       case type
       when :positive
         arg.positive? or err['positive number expected']
@@ -265,6 +275,12 @@ module ParseArgv
       arg
     end
     define(Numeric, :number)
+
+    define(:byte) do |arg, base: 1024, &err|
+      match = /\A(\d*\.?\d+(?:[Ee][\+\-]?\d+)?)([kMGTPEZY]?)/.match(arg)
+      match or err['argument have to be a byte number']
+      (match[1].to_f * (base**' kMGTPEZY'.index(match[2]))).to_i
+    end
 
     define(:string) do |arg, &err|
       arg.empty? ? err['argument can not be empty'] : arg

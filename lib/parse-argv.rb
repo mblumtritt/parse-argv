@@ -214,8 +214,6 @@ module ParseArgv
       ParseArgv.on_error&.call(e) or raise
     end
 
-    # def slice()
-
     #
     # Calls the error handler defined by {ParseArgv.on_error}.
     #
