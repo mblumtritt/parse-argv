@@ -209,7 +209,11 @@ module ParseArgv
         proc do |message|
           raise(InvalidArgumentTypeError.new(current_command, message, name))
         end
-      Conversion[type].call(value, *args, **kwargs, &error)
+      if value.is_a?(Array)
+        value.map { |v| Conversion[type].call(v, *args, **kwargs, &error) }
+      else
+        Conversion[type].call(value, *args, **kwargs, &error)
+      end
     rescue Error => e
       ParseArgv.on_error&.call(e) or raise
     end
