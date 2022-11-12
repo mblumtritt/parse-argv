@@ -107,6 +107,12 @@ module ParseArgv
   #       additional check like the :file conversion (above)
   #     </td>
   #   </tr>
+  #   <tr>
+  #     <td>:file_content</td><td></td>
+  #     <td>
+  #       expects a file name and returns the file content
+  #    </td>
+  #   </tr>
   # </tbody></table>
   #
   module Conversion
@@ -363,6 +369,14 @@ module ParseArgv
       err['file does not exist']
     end
     define(File, :file)
+
+    define(:file_content) do |arg, **opts, &err|
+      next $stdin.read if arg == '-'
+      fname = Conversion[:file].call(arg, :readable, **opts, &err)
+      File.read(fname)
+    rescue SystemCallError
+      err['file is not readable']
+    end
 
     define(:directory) do |arg, *args, **opts, &err|
       fname = Conversion[:file_name].call(arg, **opts, &err)
