@@ -771,8 +771,10 @@ module ParseArgv
   end
 
   @on_error = ->(e) { $stderr.puts e or exit e.code }
-  autoload(:Conversion, File.expand_path('./parse-argv/conversion', __dir__))
-  autoload(:VERSION, File.expand_path('./parse-argv/version', __dir__))
+
+  autoload(:Conversion, "#{__FILE__[..-4]}/conversion")
+  autoload(:VERSION, "#{__FILE__[..-4]}/version")
+
   private_constant(
     :Assemble,
     :ArgumentMissingError,
