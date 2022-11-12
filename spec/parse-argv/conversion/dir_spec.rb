@@ -55,7 +55,7 @@ RSpec.describe 'Conversion[:directory]' do
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: directory attribute `symlink` not satisfied - <value>'
+          'test: directory is not symlink - <value>'
         )
       end
     end

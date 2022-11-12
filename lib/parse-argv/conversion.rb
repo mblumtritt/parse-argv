@@ -356,7 +356,7 @@ module ParseArgv
       args.each do |att|
         name = "#{att}?"
         stat.respond_to?(name) or next
-        stat.send(name) or err["file attribute `#{att}` not satisfied"]
+        stat.public_send(name) or err["file is not #{att}"]
       end
       fname
     rescue Errno::ENOENT
@@ -371,7 +371,7 @@ module ParseArgv
       args.each do |att|
         name = "#{att}?"
         stat.respond_to?(name) or next
-        stat.send(name) or err["directory attribute `#{att}` not satisfied"]
+        stat.public_send(name) or err["directory is not #{att}"]
       end
       fname
     rescue Errno::ENOENT

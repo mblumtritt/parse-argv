@@ -55,7 +55,7 @@ RSpec.describe 'Conversion[:file]' do
       it 'raises an error' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: file attribute `symlink` not satisfied - <value>'
+          'test: file is not symlink - <value>'
         )
       end
     end
