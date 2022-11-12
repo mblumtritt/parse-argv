@@ -31,8 +31,8 @@ RSpec.describe 'Conversion[:file_name]' do
     end
   end
 
-  context 'when an directory is specified' do
-    let(:value) { result.as(:file_name, :value, dir: '..') }
+  context 'when relative directory name is specified' do
+    let(:value) { result.as(:file_name, :value, rel: '..') }
 
     it 'returns the correct value' do
       expect(value).to eq File.expand_path('../file.ext', Dir.pwd)

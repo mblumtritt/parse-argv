@@ -246,7 +246,7 @@ module ParseArgv
     define(Integer, :integer)
 
     define(:float) do |arg, type = nil, &err|
-      /\A[\+\-]?\d*\.?\d+(?:[Ee][\+\-]?\d+)?/.match?(arg) or
+      /\A[+\-]?\d*\.?\d+(?:[Ee][+\-]?\d+)?/.match?(arg) or
         err['argument have to be a float number']
       arg = arg.to_f
       case type
@@ -290,8 +290,8 @@ module ParseArgv
     end
     define(String, :string)
 
-    define(:file_name) do |arg, dir: nil, &err|
-      File.expand_path(Conversion[:string].call(arg, &err), dir)
+    define(:file_name) do |arg, rel: nil, &err|
+      File.expand_path(Conversion[:string].call(arg, &err), rel)
     end
 
     define(:regexp) do |arg, &err|
