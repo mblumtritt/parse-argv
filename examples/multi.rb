@@ -1,9 +1,10 @@
+#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 require_relative '../lib/parse-argv'
 
-Argv = ParseArgv.from <<~HELP
-  ParseArgv Demo for a CLI with subcommands
+ARGS = ParseArgv.from <<~HELP
+  ParseARGS Demo for a CLI with subcommands
   This example demonstrates a CLI with subcommands. It processes an imganinary
   key/value store that can be synchronized with a server.
 
@@ -57,20 +58,20 @@ Argv = ParseArgv.from <<~HELP
   Show help for given <command>.
 HELP
 
-case Argv.current_command.name
+case ARGS.current_command.name
 when 'multi'
-  puts(Argv.help? ? Argv : 'multi sample v1.0.0')
+  puts(ARGS.help? ? ARGS : 'multi sample v1.0.0')
 when 'help'
-  if Argv.member?(:command)
-    command = Argv.find_command(Argv.command)
-    Argv.error!("unknown command - #{Argv.command.join(' ')}") if command.nil?
+  if ARGS.member?(:command)
+    command = ARGS.find_command(ARGS.command)
+    ARGS.error!("unknown command - #{ARGS.command.join(' ')}") if command.nil?
     puts(command.help)
   else
-    puts(Argv.main_command.help)
+    puts(ARGS.main_command.help)
   end
 else
-  puts "command '#{Argv.current_command}':"
-  attributes = Argv.to_h
+  puts "command '#{ARGS.current_command}':"
+  attributes = ARGS.to_h
   unless attributes.empty?
     width = attributes.keys.max_by(&:size).size + 3
     attributes.each_pair do |name, value|

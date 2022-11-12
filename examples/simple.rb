@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 require_relative '../lib/parse-argv'
@@ -11,8 +12,8 @@ ARGS = ParseArgv.from <<~HELP
   Usage: simple [options] <input> [<output>]
 
   Options:
-    -f, --format <fmt>    select a format
-    -c, --count <count>   set a count
+    -f, --format <format>  select a format: txt, html, md
+    -c, --count <count>    set a count (default 10)
 
   The command's options can be defined in different paragraphs.
 
@@ -26,10 +27,11 @@ HELP
 
 puts(ARGS) or exit if ARGS.help?
 puts('simple v1.0.0') or exit if ARGS.version?
-
-puts('parameters:')
-parameters = ARGS.to_h
-width = parameters.keys.max_by(&:size).size + 3
-parameters.each_pair do |name, value|
-  puts("   #{name.to_s.ljust(width)}#{value.inspect}")
-end
+puts <<~RESULT
+  parameters:
+    input    #{ARGS.input}
+    output   #{ARGS[:output]}
+    format   #{ARGS.as(%w[txt html md], :format, default: 'txt')}
+    count    #{ARGS.as(Numeric, :count, default: 10)}
+    verbose  #{ARGS.verbose?}
+RESULT
