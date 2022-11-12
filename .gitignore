@@ -1,6 +1,6 @@
-tmp/
-pkg/
-local/
 doc/
+local/
+pkg/
+tmp/
 .yardoc/
 Gemfile.lock
