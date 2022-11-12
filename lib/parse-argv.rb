@@ -556,7 +556,7 @@ module ParseArgv
           when /\A\s+-([[:alnum:]]), --([[[:alnum:]]-]+)\s+\S+/
             switch(Regexp.last_match)
           when /\A\s+-{1,2}([[[:alnum:]]-]+)\s+\S+/
-            simple_switch(Regexp.last_match[1])
+            simple_switch(Regexp.last_match(1))
           end
         end
         @prepared = true
@@ -575,11 +575,11 @@ module ParseArgv
           when '--'
             return arguments + argv
           when /\A--([[[:alnum:]]-]+)\z/
-            process_option(Regexp.last_match[1], argv)
+            process_option(Regexp.last_match(1), argv)
           when /\A-{1,2}([[[:alnum:]]-]+):(.+)\z/
             process_option_arg(Regexp.last_match)
           when /\A-([[:alnum:]]+)\z/
-            process_opts(Regexp.last_match[1], argv)
+            process_opts(Regexp.last_match(1), argv)
           else
             arguments << arg
           end
