@@ -16,8 +16,11 @@ You can use ParseArgv for simpler programs just as well as for CLI with multi-le
 
 This is a very early stage of the gem which means that some stuff is missing/just in development.
 
-- [ ]  extend tests
-- [ ]  add more examples
+- [ ] extend help for Result: direct attribute call
+- [ ] extend help for ParseArgv
+- [ ] add parser syntax help
+- [ ] extend this README
+- [ ] publish first version
 
 <!-- ## Sample
 
