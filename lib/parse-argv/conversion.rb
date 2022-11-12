@@ -86,7 +86,10 @@ module ParseArgv
   #   </tr>
   #   <tr>
   #     <td>:time</td><td>Time</td>
-  #     <td>convert to a <code>Time</code>>; accepts optional a <code>Date</code> or <code>Time</code> as :reference option</td>
+  #     <td>
+  #       convert to a <code>Time</code>>; accepts optional a <code>Date</code>
+  #       or <code>Time</code> as :reference option
+  #     </td>
   #   </tr>
   #   <tr>
   #     <td>:file</td><td>File</td>
@@ -194,7 +197,7 @@ module ParseArgv
       private
 
       def one_of(ary)
-        proc do |arg, *opts, &err|
+        proc do |arg, &err|
           ary.include?(arg) and next arg
           err["argument must be one of #{ary.map { |s| "`#{s}`" }.join(', ')}"]
         end
