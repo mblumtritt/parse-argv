@@ -4,11 +4,11 @@ source 'https://rubygems.org'
 
 group :development, :test do
   gem 'bundler'
-  gem 'prettier'
   gem 'rake'
 end
 
 group :development do
+  gem 'prettier'
   gem 'yard'
 end
 

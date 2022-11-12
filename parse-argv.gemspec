@@ -23,7 +23,7 @@ Gem::Specification.new do |spec|
   spec.homepage = 'https://github.com/mblumtritt/parse-argv'
   spec.metadata['source_code_uri'] = spec.homepage
   spec.metadata['bug_tracker_uri'] = "#{spec.homepage}/issues"
-  # spec.metadata['documentation_uri'] = 'https://rubydoc.info/gems/parse-argv'
+  spec.metadata['documentation_uri'] = 'https://rubydoc.info/gems/parse-argv'
 
   spec.required_ruby_version = '>= 2.7.0'
 
