@@ -71,36 +71,36 @@ RSpec.describe 'arguments parsing' do
   context 'when only required <input> is given' do
     let(:argv) { %w[input_arg] }
 
-    context 'attribute existence' do
-      it 'confirms if an attribute exists' do
-        expect(result.member?('switch')).to be true
-        expect(result.member?(:next)).to be true
-        expect(result.member?(:help)).to be true
-        expect(result.member?(:version)).to be true
-        expect(result.member?(:input)).to be true
-      end
-
-      it 'does not confirm if an attribute does not exist' do
-        expect(result.member?('option')).to be false
-        expect(result.member?(:prefix)).to be false
-        expect(result.member?(:output)).to be false
-        expect(result.member?(:foo)).to be false
-      end
-    end
-
-    it 'defines custom attributes' do
-      expect(result.input).to eq 'input_arg'
-      expect(result.switch?).to be false
-    end
-
     it 'can be converted to Hash' do
       expect(result.to_h).to eq(
-        input: 'input_arg',
-        switch: false,
-        next: false,
         help: false,
+        input: 'input_arg',
+        next: false,
+        option: nil,
+        output: nil,
+        prefix: nil,
+        switch: false,
         version: false
       )
+    end
+
+    {
+      help: false,
+      input: 'input_arg',
+      next: false,
+      option: nil,
+      output: nil,
+      prefix: nil,
+      switch: false,
+      version: false
+    }.each_pair do |name, value|
+      it "has an attribute ##{name} => #{value.inspect}" do
+        expect(result.public_send(name)).to eq value
+      end
+
+      it "has an attribute #{name}? => #{value ? true : false}" do
+        expect(result.public_send("#{name}?")).to eq(value ? true : false)
+      end
     end
   end
 
@@ -151,6 +151,7 @@ RSpec.describe 'arguments parsing' do
         switch: true,
         next: true,
         option: 'option_arg',
+        output: nil,
         prefix: 'prefix_arg',
         help: false,
         version: false

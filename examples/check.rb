@@ -30,7 +30,7 @@ def find_command(all, name)
   command or ARGS.error!("no such command - #{name}")
 end
 
-cmds = [find_command(cmds, ARGS.as(:string, :name))] if ARGS.exist?(:name)
+cmds = [find_command(cmds, ARGS.as(:string, :name))] if ARGS.name?
 
 module Format
   class Json
@@ -53,7 +53,7 @@ module Format
     def to_s
       name, args = @command.fetch_values(:full_name, :arguments)
       ret = "usage: #{name}"
-      args.each_pair { |name, info| ret << as_str(name, info) }
+      args.each_pair { |arg_name, info| ret << as_str(arg_name, info) }
       ret
     end
 
@@ -84,8 +84,8 @@ module Format
       ret = ["#{full_name == name ? 'Command' : 'Subcommand'}: #{name}"]
       return ret if args.empty?
       width = args.keys.max_by(&:size).size
-      args.each_pair do |name, info|
-        ret << "   #{name.to_s.ljust(width)}   #{as_str(info)}"
+      args.each_pair do |arg_name, info|
+        ret << "   #{arg_name.to_s.ljust(width)}   #{as_str(info)}"
       end
       ret.join("\n")
     end

@@ -204,16 +204,12 @@ module ParseArgv
     # @see Conversion
     #
     def as(type, name, *args, default: nil, **kwargs)
-      value = @rgs[name.to_sym] or return default
-      error =
-        proc do |message|
-          raise(InvalidArgumentTypeError.new(current_command, message, name))
-        end
-      if value.is_a?(Array)
-        value.map { |v| Conversion[type].call(v, *args, **kwargs, &error) }
-      else
-        Conversion[type].call(value, *args, **kwargs, &error)
-      end
+      value = @rgs[name.to_sym]
+      return default if value.nil?
+      conv = Conversion[type]
+      error = error_proc(name)
+      return conv.call(value, *args, **kwargs, &error) unless value.is_a?(Array)
+      value.map { |v| conv.call(v, *args, **kwargs, &error) }
     rescue Error => e
       ParseArgv.on_error&.call(e) or raise
     end
@@ -270,7 +266,8 @@ module ParseArgv
     #
     def fetch(name, *args, &block)
       name = name.to_sym
-      return @args[name] if @rgs.key?(name)
+      value = @args[name]
+      return value unless value.nil?
       args.empty? ? (block || ATTRIBUTE_ERROR).call(name) : args.first
     end
 
@@ -287,18 +284,10 @@ module ParseArgv
       @all_commands.find { |cmd| cmd.name == name }
     end
 
-    #
-    # @param name [String, Symbol] attribute name
-    # @return [Boolean] whether the attribute exists
-    #
-    def member?(name)
-      @rgs.key?(name.to_sym)
-    end
-    alias exist? member?
 
     # @!visibility private
     def respond_to_missing?(sym, _)
-      @rgs.key?(sym) || super
+      @rgs.key?(sym.end_with?('?') ? sym[..-2].to_sym : sym) || super
     end
 
     #
@@ -343,8 +332,16 @@ module ParseArgv
     #
     def method_missing(sym, *_)
       return @rgs.key?(sym) ? @rgs[sym] : super unless sym.end_with?('?')
-      sym = sym[0..-2].to_sym
-      @rgs.key?(sym) ? @rgs[sym] == true : super
+      sym = sym[..-2].to_sym
+      @rgs.key?(sym) or return super
+      value = @rgs[sym]
+      value != nil && value != false
+    end
+
+    def error_proc(name)
+      proc do |message|
+        raise(InvalidArgumentTypeError.new(current_command, message, name))
+      end
     end
 
     ATTRIBUTE_ERROR = proc { |name| raise(UnknownAttributeError, name) }
@@ -433,11 +430,14 @@ module ParseArgv
     end
 
     class Commands
-      def parse(help_text)
+      def initialize
         @commands = []
         @help = []
         @header_text = true
         @line_number = 0
+      end
+
+      def parse(help_text)
         help_text.each_line(chomp: true) do |line|
           @line_number += 1
           case line
@@ -596,9 +596,9 @@ module ParseArgv
         @arguments.each_pair do |key, type|
           @result[key] = case type
           when :optional
-            argv.shift unless argv.empty?
+            argv.empty? ? nil : argv.shift
           when :optional_rest
-            argv.shift(argv.size) unless argv.empty?
+            argv.empty? ? nil : argv.shift(argv.size)
           when :required
             argv.shift or raise(ArgumentMissingError.new(self, key))
           when :required_rest
@@ -617,8 +617,9 @@ module ParseArgv
         keys = @arguments.keys.reverse!
         while argv.size < @arguments.size
           nonreq = keys.find { |key| @arguments[key][0] == 'o' }
-          next @arguments.delete(keys.delete(nonreq)) if nonreq
-          raise(ArgumentMissingError.new(self, @arguments.keys.last))
+          nonreq or raise(ArgumentMissingError.new(self, @arguments.keys.last))
+          @arguments.delete(keys.delete(nonreq))
+          @result[nonreq] = nil
         end
       end
 
@@ -644,9 +645,13 @@ module ParseArgv
 
       def process_switches
         @options.each_value do |name|
-          next unless name[0] == '!'
-          name = name[1..].to_sym
-          @result[name] = false unless @result.key?(name)
+          if name[0] == '!'
+            name = name[1..].to_sym
+            @result[name] = false unless @result.key?(name)
+          else
+            name = name.to_sym
+            @result[name] = nil unless @result.key?(name)
+          end
         end
       end
 

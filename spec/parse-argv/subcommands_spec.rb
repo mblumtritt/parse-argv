@@ -218,7 +218,7 @@ RSpec.describe 'subcommands' do
       end
 
       it 'returns correct arguments' do
-        expect(result.member?(:command)).to be false
+        expect(result.command?).to be false
       end
     end
 

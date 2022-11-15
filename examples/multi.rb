@@ -62,7 +62,7 @@ case ARGS.current_command.name
 when 'multi'
   puts(ARGS.help? ? ARGS : 'multi sample v1.0.0')
 when 'help'
-  if ARGS.member?(:command)
+  if ARGS.command?
     command = ARGS.find_command(ARGS.command)
     ARGS.error!("unknown command - #{ARGS.command.join(' ')}") if command.nil?
     puts(command.help)
@@ -72,10 +72,8 @@ when 'help'
 else
   puts "command '#{ARGS.current_command}':"
   attributes = ARGS.to_h
-  unless attributes.empty?
-    width = attributes.keys.max_by(&:size).size + 3
-    attributes.each_pair do |name, value|
-      puts("   #{name.to_s.ljust(width)}#{value.inspect}")
-    end
+  width = attributes.keys.max_by(&:size).size + 3
+  attributes.each_pair do |name, value|
+    puts("   #{name.to_s.ljust(width)}#{value.inspect}")
   end
 end

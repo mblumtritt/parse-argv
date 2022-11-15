@@ -37,7 +37,7 @@ RSpec.describe 'arguments splatting' do
     it 'accepts minimum parameters' do
       result = ParseArgv.from(help_text, %w[arg1 arg3])
       expect(result.file1).to eq 'arg1'
-      expect(result.member?(:file2)).to be false
+      expect(result.file2?).to be false
       expect(result.file3).to eq 'arg3'
     end
 
@@ -82,7 +82,7 @@ RSpec.describe 'arguments splatting' do
     it 'does not require additional parameters' do
       result = ParseArgv.from(help_text, %w[arg1])
       expect(result.file1).to eq 'arg1'
-      expect(result.member?(:files)).to be false
+      expect(result.files?).to be false
     end
   end
 

@@ -30,8 +30,8 @@ puts('simple v1.0.0') or exit if ARGS.version?
 puts <<~RESULT
   parameters:
     input    #{ARGS.input}
-    output   #{ARGS[:output]}
+    output   #{ARGS.output}
     format   #{ARGS.as(%w[txt html md], :format, default: 'txt')}
-    count    #{ARGS.as(Numeric, :count, default: 10)}
-    verbose  #{ARGS.verbose?}
+    count    #{ARGS.as(Integer, :count, :positive, default: 10)}
+    verbose  #{ARGS.verbose}
 RESULT
