@@ -71,9 +71,9 @@ when 'help'
   end
 else
   puts "command '#{ARGS.current_command}':"
-  attributes = ARGS.to_h
-  width = attributes.keys.max_by(&:size).size + 3
-  attributes.each_pair do |name, value|
+  arguments = ARGS.to_h
+  width = arguments.keys.max_by(&:size).size + 3
+  arguments.each_pair do |name, value|
     puts("   #{name.to_s.ljust(width)}#{value.inspect}")
   end
 end

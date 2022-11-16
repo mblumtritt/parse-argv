@@ -2,6 +2,7 @@
 
 require 'date'
 require_relative '../../helper'
+require_relative 'shared'
 
 RSpec.describe 'Conversion.define alias' do
   {

@@ -1,21 +1,21 @@
 # frozen_string_literal: true
 
 require_relative '../../helper'
+require_relative 'shared'
 
 RSpec.describe 'Conversion[:float]' do
-  subject(:result) { ParseArgv.from("usage: test:\n --opt <value> some", argv) }
+  subject(:value) do
+    ParseArgv.from("usage: test:\n --opt <value> some", argv)[:value].as(:float)
+  end
 
-  let(:value) { result.as(:float, :value) }
   let(:argv) { %w[--opt 42.21.21] }
 
-  it 'returns the correct value' do
-    expect(value).to eq 42.21
-  end
+  it { is_expected.to eq 42.21 }
 
   context 'when an invalid value is given' do
     let(:argv) { %w[--opt invalid] }
 
-    it 'raises an error' do
+    it 'raises' do
       expect { value }.to raise_error(
         ParseArgv::Error,
         'test: argument have to be a float number - <value>'
@@ -23,31 +23,22 @@ RSpec.describe 'Conversion[:float]' do
     end
   end
 
-  context 'when value is not defined' do
-    let(:argv) { [] }
-
-    it 'returns nil' do
-      expect(value).to be_nil
-    end
-
-    context 'when a default is specified' do
-      it 'returns the default value' do
-        expect(result.as(:float, :value, default: 21)).to eq 21
-      end
-    end
-  end
+  include_examples 'when value is not defined'
 
   context 'when it needs to be positive' do
-    let(:value) { result.as(:float, :value, :positive) }
-
-    it 'returns the correct value' do
-      expect(value).to eq 42.21
+    subject(:value) do
+      ParseArgv.from("usage: test:\n --opt <value> some", argv)[:value].as(
+        :float,
+        :positive
+      )
     end
+
+    it { is_expected.to eq 42.21 }
 
     context 'when an invalid value is given' do
       let(:argv) { %w[--opt 0] }
 
-      it 'raises an error' do
+      it 'raises' do
         expect { value }.to raise_error(
           ParseArgv::Error,
           'test: positive float number expected - <value>'
@@ -57,17 +48,20 @@ RSpec.describe 'Conversion[:float]' do
   end
 
   context 'when it needs to be negative' do
-    let(:value) { result.as(:float, :value, :negative) }
+    subject(:value) do
+      ParseArgv.from("usage: test:\n --opt <value> some", argv)[:value].as(
+        :float,
+        :negative
+      )
+    end
     let(:argv) { %w[--opt:-42.21] }
 
-    it 'returns the correct value' do
-      expect(value).to eq(-42.21)
-    end
+    it { is_expected.to eq(-42.21) }
 
     context 'when an invalid value is given' do
       let(:argv) { %w[--opt 0] }
 
-      it 'raises an error' do
+      it 'raises' do
         expect { value }.to raise_error(
           ParseArgv::Error,
           'test: negative float number expected - <value>'
@@ -77,16 +71,19 @@ RSpec.describe 'Conversion[:float]' do
   end
 
   context 'when it needs to be nonzero' do
-    let(:value) { result.as(:float, :value, :nonzero) }
-
-    it 'returns the correct value' do
-      expect(value).to eq 42.21
+    subject(:value) do
+      ParseArgv.from("usage: test:\n --opt <value> some", argv)[:value].as(
+        :float,
+        :nonzero
+      )
     end
+
+    it { is_expected.to eq 42.21 }
 
     context 'when an invalid value is given' do
       let(:argv) { %w[--opt 0] }
 
-      it 'raises an error' do
+      it 'raises' do
         expect { value }.to raise_error(
           ParseArgv::Error,
           'test: nonzero float number expected - <value>'

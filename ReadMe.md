@@ -60,6 +60,9 @@ args.verbose?
 #=> true, when "--verbose" argument was specified
 #=> false, when "--verbose" argument was not specified
 
+args[:infile].as(File, :readable)
+#=> file name
+
 args.outfile?
 #=> true, when second argument was specified
 args.outfile

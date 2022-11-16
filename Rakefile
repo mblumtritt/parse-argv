@@ -19,4 +19,4 @@ YARD::Rake::YardocTask.new(:doc) do |task|
 end
 
 desc 'Run YARD development server'
-task('doc:dev' => :clobber) { exec('yard server --reload') }
+task('doc:dev' => :clean) { exec('yard server --reload') }

@@ -2,21 +2,21 @@
 
 require 'date'
 require_relative '../../helper'
+require_relative 'shared'
 
 RSpec.describe 'Conversion[:date]' do
-  subject(:result) { ParseArgv.from("usage: test:\n --opt <value> some", argv) }
+  subject(:value) do
+    ParseArgv.from("usage: test:\n --opt <value> some", argv)[:value].as(:date)
+  end
 
-  let(:value) { result.as(:date, :value) }
   let(:argv) { %w[--opt 2022-01-02] }
 
-  it 'returns the correct value' do
-    expect(value).to eq Date.new(2022, 1, 2)
-  end
+  it { is_expected.to eq Date.new(2022, 1, 2) }
 
   context 'when an invalid value is given' do
     let(:argv) { %w[--opt invalid] }
 
-    it 'raises an error' do
+    it 'raises' do
       expect { value }.to raise_error(
         ParseArgv::Error,
         'test: argument must be a date - <value>'
@@ -24,13 +24,7 @@ RSpec.describe 'Conversion[:date]' do
     end
   end
 
-  context 'when value is not defined' do
-    let(:argv) { [] }
-
-    it 'returns nil' do
-      expect(value).to be_nil
-    end
-  end
+  include_examples 'when value is not defined'
 
   today = Date.today
   {
@@ -43,19 +37,20 @@ RSpec.describe 'Conversion[:date]' do
     context "when a shorthand Date is given like '#{arg}'" do
       let(:argv) { ['--opt', arg] }
 
-      it "converts to a Date: #{expected}" do
-        expect(value).to eq expected
-      end
+      it { is_expected.to eq expected }
     end
   end
 
   context 'when a reference date is given' do
-    let(:argv) { %w[--opt 17] }
-
-    it 'uses the reference to complete the result' do
-      expect(result.as(:date, :value, reference: Date.new(2000, 9))).to eq(
-        Date.new(2000, 9, 17)
+    subject(:value) do
+      ParseArgv.from("usage: test:\n --opt <value> some", argv)[:value].as(
+        :date,
+        reference: Date.new(2000, 9)
       )
     end
+
+    let(:argv) { %w[--opt 17] }
+
+    it { is_expected.to eq Date.new(2000, 9, 17) }
   end
 end

@@ -28,10 +28,10 @@ HELP
 puts(ARGS) or exit if ARGS.help?
 puts('simple v1.0.0') or exit if ARGS.version?
 puts <<~RESULT
-  parameters:
+  arguments:
     input    #{ARGS.input}
     output   #{ARGS.output}
-    format   #{ARGS.as(%w[txt html md], :format, default: 'txt')}
-    count    #{ARGS.as(Integer, :count, :positive, default: 10)}
+    format   #{ARGS[:format].as(%w[txt html md], default: 'txt')}
+    count    #{ARGS[:count].as(Integer, :positive, default: 10)}
     verbose  #{ARGS.verbose}
 RESULT

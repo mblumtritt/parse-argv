@@ -1,21 +1,24 @@
 # frozen_string_literal: true
 
 require_relative '../../helper'
+require_relative 'shared'
 
 RSpec.describe 'Conversion[[<type>]]' do
-  subject(:result) { ParseArgv.from("usage: test:\n --opt <value> some", argv) }
+  subject(:value) do
+    ParseArgv.from("usage: test:\n --opt <value> some", argv)[:value].as(
+      [:integer],
+      :positive
+    )
+  end
 
-  let(:value) { result.as([:integer], :value, :positive) }
   let(:argv) { %w[--opt [1,2,3]] }
 
-  it 'returns the correct value' do
-    expect(value).to eq [1, 2, 3]
-  end
+  it { is_expected.to eq [1, 2, 3] }
 
   context 'when an invalid value is given' do
     let(:argv) { %w[--opt [1,2,-3]] }
 
-    it 'raises an error' do
+    it 'raises' do
       expect { value }.to raise_error(
         ParseArgv::Error,
         'test: positive integer number expected - <value>'
@@ -23,11 +26,5 @@ RSpec.describe 'Conversion[[<type>]]' do
     end
   end
 
-  context 'when value is not defined' do
-    let(:argv) { [] }
-
-    it 'returns nil' do
-      expect(value).to be_nil
-    end
-  end
+  include_examples 'when value is not defined'
 end

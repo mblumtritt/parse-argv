@@ -182,7 +182,7 @@ RSpec.describe 'arguments parsing' do
   context 'when a required option parameter is expected' do
     let(:argv) { %w[input_arg -o] }
 
-    it 'raises an error' do
+    it 'raises' do
       expect { result }.to raise_error(
         ParseArgv::Error,
         "test: argument <option> missing - '-o'"
@@ -193,7 +193,7 @@ RSpec.describe 'arguments parsing' do
   context 'when an undefined option is used' do
     let(:argv) { %w[--foo] }
 
-    it 'raises an error' do
+    it 'raises' do
       expect { result }.to raise_error(
         ParseArgv::Error,
         "test: unknown option - '--foo'"

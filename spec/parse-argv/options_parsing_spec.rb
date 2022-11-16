@@ -143,7 +143,7 @@ RSpec.describe 'options parsing' do
         -s, --stop    another switch
     HELP
 
-    it 'raises an error' do
+    it 'raises' do
       expect { ParseArgv.from(help_text, []) }.to raise_error(
         ArgumentError,
         'option already defined - s'

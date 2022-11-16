@@ -1,21 +1,21 @@
 # frozen_string_literal: true
 
 require_relative '../../helper'
+require_relative 'shared'
 
 RSpec.describe 'Conversion[:time]' do
-  subject(:result) { ParseArgv.from("usage: test:\n --opt <value> some", argv) }
+  subject(:value) do
+    ParseArgv.from("usage: test:\n --opt <value> some", argv)[:value].as(:time)
+  end
 
-  let(:value) { result.as(:time, :value) }
   let(:argv) { ['--opt', '2022-01-02 13:14:15 GMT'] }
 
-  it 'returns the correct value' do
-    expect(value).to eq Time.new(2022, 1, 2, 13, 14, 15, 0)
-  end
+  it { is_expected.to eq Time.new(2022, 1, 2, 13, 14, 15, 0) }
 
   context 'when an invalid value is given' do
     let(:argv) { %w[--opt invalid] }
 
-    it 'raises an error' do
+    it 'raises' do
       expect { value }.to raise_error(
         ParseArgv::Error,
         'test: argument must be a time - <value>'
@@ -23,13 +23,7 @@ RSpec.describe 'Conversion[:time]' do
     end
   end
 
-  context 'when value is not defined' do
-    let(:argv) { [] }
-
-    it 'returns nil' do
-      expect(value).to be_nil
-    end
-  end
+  include_examples 'when value is not defined'
 
   now = Time.now
   {
@@ -42,19 +36,20 @@ RSpec.describe 'Conversion[:time]' do
     context "when a shorthand Time is given like '#{arg}'" do
       let(:argv) { ['--opt', arg] }
 
-      it "converts to a Time: #{expected}" do
-        expect(value).to eq expected
-      end
+      it { is_expected.to eq expected }
     end
   end
 
   context 'when a reference date is given' do
-    let(:argv) { %w[--opt 13:14] }
-
-    it 'uses the reference to complete the result' do
-      expect(result.as(:time, :value, reference: Time.new(2000, 9, 8))).to eq(
-        Time.new(2000, 9, 8, 13, 14)
+    subject(:value) do
+      ParseArgv.from("usage: test:\n --opt <value> some", argv)[:value].as(
+        :time,
+        reference: Time.new(2000, 9, 8)
       )
     end
+
+    let(:argv) { %w[--opt 13:14] }
+
+    it { is_expected.to eq Time.new(2000, 9, 8, 13, 14) }
   end
 end

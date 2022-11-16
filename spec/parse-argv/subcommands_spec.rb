@@ -138,7 +138,7 @@ RSpec.describe 'subcommands' do
     context 'when no subcommand command was specified' do
       let(:argv) { [] }
 
-      it 'raises an error' do
+      it 'raises' do
         expect { result }.to raise_error(
           ParseArgv::Error,
           'multi: argument missing - <command>'

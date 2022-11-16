@@ -1,21 +1,23 @@
 # frozen_string_literal: true
 
 require_relative '../../helper'
+require_relative 'shared'
 
 RSpec.describe 'Conversion[Array<String>]' do
-  subject(:result) { ParseArgv.from("usage: test:\n --opt <value> some", argv) }
+  subject(:value) do
+    ParseArgv.from("usage: test:\n --opt <value> some", argv)[:value].as(
+      %w[one two three]
+    )
+  end
 
-  let(:value) { result.as(%w[one two three], :value) }
   let(:argv) { %w[--opt two] }
 
-  it 'returns the correct value' do
-    expect(value).to eq 'two'
-  end
+  it { is_expected.to eq 'two' }
 
   context 'when an invalid value is given' do
     let(:argv) { %w[--opt invalid] }
 
-    it 'raises an error' do
+    it 'raises' do
       expect { value }.to raise_error(
         ParseArgv::Error,
         'test: argument must be one of `one`, `two`, `three` - <value>'
@@ -26,16 +28,17 @@ RSpec.describe 'Conversion[Array<String>]' do
   context 'when value is not defined' do
     let(:argv) { [] }
 
-    it 'returns nil' do
-      expect(value).to be_nil
-    end
+    it { is_expected.to be_nil }
 
     context 'when a default is specified' do
-      let(:value) { result.as(%w[one two three], :value, default: 'seven') }
-
-      it 'returns the default value' do
-        expect(value).to eq 'seven'
+      subject(:value) do
+        ParseArgv.from("usage: test:\n --opt <value> some", argv)[:value].as(
+          %w[one two three],
+          default: 'seven'
+        )
       end
+
+      it { is_expected.to eq 'seven' }
     end
   end
 end

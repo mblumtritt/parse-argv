@@ -30,18 +30,18 @@ HELP
 puts(ARGS) or exit if ARGS.help?
 
 puts <<~RESULT
-  string    #{ARGS.as(String, :string).inspect}
-  array     #{ARGS.as(Array, :array).inspect}
-  filename  #{ARGS.as(:file_name, :filename).inspect}
-  regexp    #{ARGS.as(Regexp, :regexp).inspect}
-  integer   #{ARGS.as(Integer, :integer)}
-  float     #{ARGS.as(Float, :float)}
-  number    #{ARGS.as(Numeric, :number)}
-  byte      #{ARGS.as(:byte, :byte)}
-  date      #{ARGS.as(:date, :date)}
-  time      #{ARGS.as(Time, :time)}
-  file      #{ARGS.as(File, :file).inspect}
-  dir       #{ARGS.as(Dir, :dir).inspect}
-  files     #{ARGS.as([File], :files).inspect}
-  oneof     #{ARGS.as(%w[foo bar baz], :oneof)}
+  string    #{ARGS[:string].as(String).inspect}
+  array     #{ARGS[:array].as(Array).inspect}
+  filename  #{ARGS[:filename].as(:file_name).inspect}
+  regexp    #{ARGS[:regexp].as(Regexp).inspect}
+  integer   #{ARGS[:integer].as(Integer)}
+  float     #{ARGS[:float].as(Float)}
+  number    #{ARGS[:number].as(Numeric)}
+  byte      #{ARGS[:byte].as(:byte)}
+  date      #{ARGS[:date].as(:date)}
+  time      #{ARGS[:time].as(Time)}
+  file      #{ARGS[:file].as(File).inspect}
+  dir       #{ARGS[:dir].as(Dir).inspect}
+  files     #{ARGS[:files].as([File]).inspect}
+  oneof     #{ARGS[:oneof].as(%w[foo bar baz])}
 RESULT

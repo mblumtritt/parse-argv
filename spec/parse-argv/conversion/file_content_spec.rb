@@ -1,21 +1,23 @@
 # frozen_string_literal: true
 
 require_relative '../../helper'
+require_relative 'shared'
 
 RSpec.describe 'Conversion[:file_content]' do
-  subject(:result) { ParseArgv.from("usage: test:\n --opt <value> some", argv) }
+  subject(:value) do
+    ParseArgv.from("usage: test:\n --opt <value> some", argv)[:value].as(
+      :file_content
+    )
+  end
 
-  let(:value) { result.as(:file_content, :value) }
   let(:argv) { ['--opt', __FILE__] }
 
-  it 'returns the correct value' do
-    expect(value).to eq File.read(__FILE__)
-  end
+  it { is_expected.to eq File.read(__FILE__) }
 
   context 'when an invalid value is given' do
     let(:argv) { %w[--opt invalid] }
 
-    it 'raises an error' do
+    it 'raises' do
       expect { value }.to raise_error(
         ParseArgv::Error,
         'test: file does not exist - <value>'
@@ -26,7 +28,7 @@ RSpec.describe 'Conversion[:file_content]' do
   context 'when not a file is given' do
     let(:argv) { ['--opt', __dir__] }
 
-    it 'raises an error' do
+    it 'raises' do
       expect { value }.to raise_error(
         ParseArgv::Error,
         'test: argument must be a file - <value>'
@@ -34,13 +36,7 @@ RSpec.describe 'Conversion[:file_content]' do
     end
   end
 
-  context 'when value is not defined' do
-    let(:argv) { [] }
-
-    it 'returns nil' do
-      expect(value).to be_nil
-    end
-  end
+  include_examples 'when value is not defined'
 
   context 'when value is "-"' do
     let(:argv) { %w[--opt:-] }

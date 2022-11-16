@@ -141,6 +141,86 @@ module ParseArgv
   #
   class Result
     #
+    # This is a helper class to get parsed arguments from {Result} to be converted.
+    #
+    class Value
+      include Comparable
+
+      #
+      # @return [Object] the argument value
+      #
+      attr_reader :value
+
+      # @!visibility private
+      def initialize(value, error_proc)
+        @value = value
+        @error_proc = error_proc
+      end
+
+      #
+      # @attribute [r] value?
+      # @return [Boolean] whenever the value is nil and not false
+      #
+      def value?
+        @value != nil && @value != false
+      end
+
+      #
+      # Requests the value to be converted to a specified +type+. It uses
+      # {Conversion.[]} to obtain the conversion procedure.
+      #
+      # Some conversion procedures allow additional parameters which will be
+      # forwarded.
+      #
+      # @example convert to a positive number (or fallback to 10)
+      #   sample.as(:integer, default: 10, :positive)
+      #
+      # @example convert to a file name of an existing, readable file
+      #   sample.as(File, :readable)
+      #
+      # @example convert to Time and use the +reference+ to complete  the the date parts (when not given)
+      #   sample.as(Time, reference: Date.new(2022, 1, 2))
+      #
+      # @param type [Symbol, Class, Array<String>, Array(type), Regexp]
+      #   conversion type, see {Conversion.[]}
+      # @param args [Array<Object>] optional arguments to be forwarded to the
+      #   conversion procedure
+      # @param default [Object] returned, when an argument was not specified
+      # @param kwargs [Symbol => Object] optional named arguments forwarded to the conversion procedure
+      # @return [Object] converted argument or +default+
+      #
+      # @see Conversion
+      #
+      def as(type, *args, default: nil, **kwargs)
+        return default if @value.nil?
+        conv = Conversion[type]
+        if value.is_a?(Array)
+          value.map { |v| conv.call(v, *args, **kwargs, &@error_proc) }
+        else
+          conv.call(@value, *args, **kwargs, &@error_proc)
+        end
+      rescue Error => e
+        ParseArgv.on_error&.call(e) or raise
+      end
+
+      # @!visibility private
+      def eql?(other)
+        other.is_a?(self.class) ? @value == other.value : @value == other
+      end
+      alias == eql?
+
+      # @!visibility private
+      def equal?(other)
+        (self.class == other.class) && (@value == other.value)
+      end
+
+      # @!visibility private
+      def <=>(other)
+        other.is_a?(self.class) ? @value <=> other.value : @value <=> other
+      end
+    end
+
+    #
     # @return [Array<Command>] all defined commands
     #
     attr_reader :all_commands
@@ -164,54 +244,15 @@ module ParseArgv
     end
 
     #
-    # Get an argument value.
+    # Get an argument as {Value} which can be converted.
     #
     # @param name [String, Symbol] name of the requested argument
-    # @return [String] argument value
-    # @return [Boolean] argument value when argument was defined as an option
+    # @return [Value] argument value
     # @return [nil] when argument is not defined
     #
     def [](name)
-      @rgs[name.to_sym]
-    end
-
-    #
-    # Requests an argument to be converted to a specified type. It uses
-    # {Conversion.[]} to obtain the conversion procedure for the named
-    # argument.
-    #
-    # Some conversion procedures allow additional parameters which will be
-    # forwarded.
-    #
-    # @example get argument *count* as positive number (or fallback to 10)
-    #   result.as(:integer, :count, default: 10, :positive)
-    #
-    # @example get argument *input* as a file name of an existing, readable file
-    #   result.as(File, :input, :readable)
-    #
-    # @example get argument *time* as Time and use the +reference+ to complete the the date parts (when not given)
-    #   result.as(Time, :time, reference: Date.new(2022, 1, 2))
-    #
-    # @param type [Symbol, Class, Array<String>, Array(type), Regexp]
-    #   conversion type, see {Conversion.[]}
-    # @param name [Symbol, String] argument name
-    # @param args [Array<Object>] optional arguments to be forwarded to the
-    #   conversion
-    # @param default [Object] returned, when an argument was not specified
-    # @param kwargs [Symbol => Object] optional named arguments forwarded to the conversion
-    # @return [Object] converted argument or +default+
-    #
-    # @see Conversion
-    #
-    def as(type, name, *args, default: nil, **kwargs)
-      value = @rgs[name.to_sym]
-      return default if value.nil?
-      conv = Conversion[type]
-      error = error_proc(name)
-      return conv.call(value, *args, **kwargs, &error) unless value.is_a?(Array)
-      value.map { |v| conv.call(v, *args, **kwargs, &error) }
-    rescue Error => e
-      ParseArgv.on_error&.call(e) or raise
+      name = name.to_sym
+      @rgs.key?(name) ? Value.new(@rgs[name], argument_error(name)) : nil
     end
 
     #
@@ -349,7 +390,7 @@ module ParseArgv
       value != nil && value != false
     end
 
-    def error_proc(name)
+    def argument_error(name)
       proc do |message|
         raise(InvalidArgumentTypeError.new(current_command, message, name))
       end
@@ -393,7 +434,7 @@ module ParseArgv
       end
 
       def find_current
-        (@argv.empty? || @all.size == 1) ? @main : find_sub_command
+        @argv.empty? || @all.size == 1 ? @main : find_sub_command
       end
 
       def prepare_subcommands

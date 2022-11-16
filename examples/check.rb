@@ -20,7 +20,7 @@ puts("check v#{ParseArgv::VERSION}") or exit if ARGS.version?
 
 cmds =
   begin
-    ParseArgv.parse(ARGS.as(:file_content, :files).join("\n"))
+    ParseArgv.parse(ARGS[:files].as(:file_content).join("\n"))
   rescue ArgumentError => e
     ARGS.error!("invalid syntax - #{e}")
   end
@@ -30,7 +30,7 @@ def find_command(all, name)
   command or ARGS.error!("no such command - #{name}")
 end
 
-cmds = [find_command(cmds, ARGS.as(:string, :name))] if ARGS.name?
+cmds = [find_command(cmds, ARGS[:name].as(:string))] if ARGS.name?
 
 module Format
   class Json
@@ -105,5 +105,5 @@ module Format
 end
 
 Format.const_get(
-  ARGS.as(%w[default json usage], :format, default: 'default').capitalize
+  ARGS[:format].as(%w[default json usage], default: 'default').capitalize
 ).show(cmds)
