@@ -184,7 +184,7 @@ module ParseArgv
     # forwarded.
     #
     # @example get argument *count* as positive number (or fallback to 10)
-    #   result.as(:positive, :count, default: 10)
+    #   result.as(:integer, :count, default: 10, :positive)
     #
     # @example get argument *input* as a file name of an existing, readable file
     #   result.as(File, :input, :readable)
@@ -253,7 +253,7 @@ module ParseArgv
     #   @param name [String, Symbol] attribute name
     #   @param default_value [Object] default value to return when attribute
     #     not exists
-    #   @return [Object] attribute value; maybe the default_value
+    #   @return [Object] attribute value; maybe the +default_value+
     #
     # @overload fetch(name, &block)
     #   Returns the +block+ result when the requested attribute does not
@@ -284,7 +284,6 @@ module ParseArgv
       @all_commands.find { |cmd| cmd.name == name }
     end
 
-
     # @!visibility private
     def respond_to_missing?(sym, _)
       @rgs.key?(sym.end_with?('?') ? sym[..-2].to_sym : sym) || super
@@ -303,6 +302,7 @@ module ParseArgv
     #   @return [Hash] Hash of all argument key/value pairs
     #
     def to_h(&block)
+      # ensure to return a not frozen copy
       block ? @rgs.to_h(&block) : Hash[@rgs.to_a]
     end
 
@@ -327,10 +327,21 @@ module ParseArgv
     private
 
     #
-    # All attributes can also requested as method calls.
-    # @todo describe more here...
+    # All command line attributes are read-only attributes for this instance.
     #
-    def method_missing(sym, *_)
+    # @example
+    #   # given there was <format> option defined
+    #   result.format?
+    #   #=> whether the option was specified
+    #   result.format
+    #   # String of format option or nil, when not specified
+    #
+    def method_missing(sym, *args)
+      args.size.zero? or
+        raise(
+          ArgumentError,
+          "wrong number of arguments (given #{args.size}, expected 0)"
+        )
       return @rgs.key?(sym) ? @rgs[sym] : super unless sym.end_with?('?')
       sym = sym[..-2].to_sym
       @rgs.key?(sym) or return super
@@ -344,7 +355,7 @@ module ParseArgv
       end
     end
 
-    ATTRIBUTE_ERROR = proc { |name| raise(UnknownAttributeError, name) }
+    ATTRIBUTE_ERROR = ->(name) { raise(UnknownAttributeError, name) }
     private_constant(:ATTRIBUTE_ERROR)
   end
 

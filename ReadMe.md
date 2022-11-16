@@ -60,8 +60,10 @@ args.verbose?
 #=> true, when "--verbose" argument was specified
 #=> false, when "--verbose" argument was not specified
 
-args.infile
-#=> the argument value named "infile"
+args.outfile?
+#=> true, when second argument was specified
+args.outfile
+#=> second argument or nil when not specified
 ```
 
 ## Help Text Syntax
