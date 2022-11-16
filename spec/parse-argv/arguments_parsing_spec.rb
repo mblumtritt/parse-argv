@@ -68,48 +68,38 @@ RSpec.describe 'arguments parsing' do
     end
   end
 
-  context 'when only required <input> is given' do
-    let(:argv) { %w[input_arg] }
-
-    it 'can be converted to Hash' do
-      expect(result.to_h).to eq(
-        help: false,
-        input: 'input_arg',
-        next: false,
-        option: nil,
-        output: nil,
-        prefix: nil,
-        switch: false,
-        version: false
-      )
-    end
-
-    {
-      help: false,
-      input: 'input_arg',
-      next: false,
-      option: nil,
-      output: nil,
-      prefix: nil,
-      switch: false,
-      version: false
-    }.each_pair do |name, value|
-      it "has an attribute ##{name} => #{value.inspect}" do
-        expect(result.public_send(name)).to eq value
-      end
-
-      it "has an attribute #{name}? => #{value ? true : false}" do
-        expect(result.public_send("#{name}?")).to eq(value ? true : false)
-      end
-    end
-  end
-
   context 'when all standard options are configured' do
     let(:argv) do
       %w[-s --next --opt option_arg -p prefix_arg input_arg output_arg]
     end
 
-    it 'parses all attributes correctly' do
+    it do
+      is_expected.to have_attributes(
+        input: 'input_arg',
+        output: 'output_arg',
+        switch: true,
+        next: true,
+        option: 'option_arg',
+        prefix: 'prefix_arg',
+        help: false,
+        version: false
+      )
+    end
+
+    it do
+      is_expected.to have_attributes(
+        input?: true,
+        output?: true,
+        switch?: true,
+        next?: true,
+        option?: true,
+        prefix?: true,
+        help?: false,
+        version?: false
+      )
+    end
+
+    it 'can be converted to Hash' do
       expect(result.to_h).to eq(
         input: 'input_arg',
         output: 'output_arg',
@@ -123,11 +113,41 @@ RSpec.describe 'arguments parsing' do
     end
   end
 
-  context 'when short hand options are used' do
+  context 'when only required <input> is given' do
+    let(:argv) { %w[input_arg] }
+
+    it do
+      is_expected.to have_attributes(
+        help: false,
+        input: 'input_arg',
+        next: false,
+        option: nil,
+        output: nil,
+        prefix: nil,
+        switch: false,
+        version: false
+      )
+    end
+
+    it do
+      is_expected.to have_attributes(
+        help?: false,
+        input?: true,
+        next?: false,
+        option?: false,
+        output?: false,
+        prefix?: false,
+        switch?: false,
+        version?: false
+      )
+    end
+  end
+
+  context 'short hand options can be condensed' do
     let(:argv) { %w[-snop option_arg prefix_arg input_arg output_arg] }
 
-    it 'allows to condense the options' do
-      expect(result.to_h).to eq(
+    it do
+      is_expected.to have_attributes(
         input: 'input_arg',
         output: 'output_arg',
         switch: true,
@@ -145,13 +165,13 @@ RSpec.describe 'arguments parsing' do
       %w[-s:true --next:on -o:option_arg --pref:prefix_arg input_arg]
     end
 
-    it 'allows to use alternative option value assignment' do
-      expect(result.to_h).to eq(
+    it do
+      is_expected.to have_attributes(
         input: 'input_arg',
+        output: nil,
         switch: true,
         next: true,
         option: 'option_arg',
-        output: nil,
         prefix: 'prefix_arg',
         help: false,
         version: false

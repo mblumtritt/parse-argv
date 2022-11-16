@@ -8,8 +8,7 @@ RSpec.describe 'arguments splatting' do
 
     it 'accepts all parameters' do
       result = ParseArgv.from(help_text, %w[arg1 arg2])
-      expect(result.file1).to eq 'arg1'
-      expect(result.file2).to eq 'arg2'
+      expect(result).to have_attributes(file1: 'arg1', file2: 'arg2')
     end
 
     it 'requires correct parameter count' do
@@ -29,16 +28,20 @@ RSpec.describe 'arguments splatting' do
 
     it 'accepts all parameters' do
       result = ParseArgv.from(help_text, %w[arg1 arg2 arg3])
-      expect(result.file1).to eq 'arg1'
-      expect(result.file2).to eq 'arg2'
-      expect(result.file3).to eq 'arg3'
+      expect(result).to have_attributes(
+        file1: 'arg1',
+        file2: 'arg2',
+        file3: 'arg3'
+      )
     end
 
     it 'accepts minimum parameters' do
       result = ParseArgv.from(help_text, %w[arg1 arg3])
-      expect(result.file1).to eq 'arg1'
-      expect(result.file2?).to be false
-      expect(result.file3).to eq 'arg3'
+      expect(result).to have_attributes(
+        file1: 'arg1',
+        file2: nil,
+        file3: 'arg3'
+      )
     end
 
     it 'requires correct parameter count' do
@@ -58,8 +61,7 @@ RSpec.describe 'arguments splatting' do
 
     it 'accepts all given arguments' do
       result = ParseArgv.from(help_text, %w[arg1 arg2 arg3])
-      expect(result.file1).to eq 'arg1'
-      expect(result.files).to eq %w[arg2 arg3]
+      expect(result).to have_attributes(file1: 'arg1', files: %w[arg2 arg3])
     end
 
     it 'requires additional arguments' do
@@ -75,14 +77,12 @@ RSpec.describe 'arguments splatting' do
 
     it 'accepts all given arguments' do
       result = ParseArgv.from(help_text, %w[arg1 arg2 arg3])
-      expect(result.file1).to eq 'arg1'
-      expect(result.files).to eq %w[arg2 arg3]
+      expect(result).to have_attributes(file1: 'arg1', files: %w[arg2 arg3])
     end
 
     it 'does not require additional parameters' do
       result = ParseArgv.from(help_text, %w[arg1])
-      expect(result.file1).to eq 'arg1'
-      expect(result.files?).to be false
+      expect(result).to have_attributes(file1: 'arg1', files: nil)
     end
   end
 

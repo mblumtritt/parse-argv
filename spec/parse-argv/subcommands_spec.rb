@@ -153,10 +153,7 @@ RSpec.describe 'subcommands' do
         expect(result.current_command.name).to eq 'multi'
       end
 
-      it 'returns correct options' do
-        expect(result.help?).to be true
-        expect(result.version?).to be false
-      end
+      it { is_expected.to have_attributes(help?: true, version?: false) }
     end
 
     context 'main: multi --version' do
@@ -166,10 +163,7 @@ RSpec.describe 'subcommands' do
         expect(result.current_command.name).to eq 'multi'
       end
 
-      it 'returns correct options' do
-        expect(result.help?).to be false
-        expect(result.version?).to be true
-      end
+      it { is_expected.to have_attributes(help?: false, version?: true) }
     end
 
     context 'subcommand: foo' do
@@ -179,10 +173,12 @@ RSpec.describe 'subcommands' do
         expect(result.current_command.name).to eq 'foo'
       end
 
-      it 'returns correct options' do
-        expect(result.switch?).to be true
-        expect(result.option).to eq 'opt'
-        expect(result.parameter).to eq 'arg1'
+      it do
+        is_expected.to have_attributes(
+          switch: true,
+          option: 'opt',
+          parameter: 'arg1'
+        )
       end
 
       it 'returns the main command' do
@@ -197,16 +193,18 @@ RSpec.describe 'subcommands' do
     end
 
     context 'subcommand: foo bar' do
-      let(:argv) { %w[foo bar -s -o opt arg1] }
+      let(:argv) { %w[foo bar -so opt arg1] }
 
       it 'returns the subcommand' do
         expect(result.current_command.name).to eq 'foo bar'
       end
 
-      it 'returns correct options' do
-        expect(result.switch?).to be true
-        expect(result.option).to eq 'opt'
-        expect(result.files).to eq %w[arg1]
+      it do
+        is_expected.to have_attributes(
+          switch: true,
+          option: 'opt',
+          files: ['arg1']
+        )
       end
     end
 
@@ -217,9 +215,7 @@ RSpec.describe 'subcommands' do
         expect(result.current_command.name).to eq 'help'
       end
 
-      it 'returns correct arguments' do
-        expect(result.command?).to be false
-      end
+      it { is_expected.to have_attributes(command?: false) }
     end
 
     context 'subcommand: help foo bar' do
@@ -229,9 +225,7 @@ RSpec.describe 'subcommands' do
         expect(result.current_command.name).to eq 'help'
       end
 
-      it 'returns correct arguments' do
-        expect(result.command).to eq %w[foo bar]
-      end
+      it { is_expected.to have_attributes(command: %w[foo bar]) }
     end
   end
 end
