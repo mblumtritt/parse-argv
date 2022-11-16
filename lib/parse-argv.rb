@@ -141,7 +141,10 @@ module ParseArgv
   #
   class Result
     #
-    # This is a helper class to get parsed arguments from {Result} to be converted.
+    # This is a helper class to get parsed arguments from {Result} to be
+    # converted.
+    #
+    # @see Result#[]
     #
     class Value
       include Comparable
@@ -173,7 +176,7 @@ module ParseArgv
       # forwarded.
       #
       # @example convert to a positive number (or fallback to 10)
-      #   sample.as(:integer, default: 10, :positive)
+      #   sample.as(:integer, :positive, default: 10)
       #
       # @example convert to a file name of an existing, readable file
       #   sample.as(File, :readable)
@@ -245,6 +248,9 @@ module ParseArgv
 
     #
     # Get an argument as {Value} which can be converted.
+    #
+    # @example get argument _count_ as a positive integer (or fallback to 10)
+    #   result[:count].as(:integer, :positive, default: 10)
     #
     # @param name [String, Symbol] name of the requested argument
     # @return [Value] argument value
