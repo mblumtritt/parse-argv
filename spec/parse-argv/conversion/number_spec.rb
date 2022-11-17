@@ -20,7 +20,7 @@ RSpec.describe 'Conversion[:number]' do
     it 'raises' do
       expect { value }.to raise_error(
         ParseArgv::Error,
-        'test: argument have to be a number - <value>'
+        'test: argument must be a number - <value>'
       )
     end
   end
@@ -49,7 +49,7 @@ RSpec.describe 'Conversion[:number]' do
       it 'raises' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: positive number expected - <value>'
+          'test: argument must be a positive number - <value>'
         )
       end
     end
@@ -73,7 +73,7 @@ RSpec.describe 'Conversion[:number]' do
       it 'raises' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: negative number expected - <value>'
+          'test: argument must be a negative number - <value>'
         )
       end
     end
@@ -95,7 +95,7 @@ RSpec.describe 'Conversion[:number]' do
       it 'raises' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: nonzero number expected - <value>'
+          'test: argument must be a nonzero number - <value>'
         )
       end
     end

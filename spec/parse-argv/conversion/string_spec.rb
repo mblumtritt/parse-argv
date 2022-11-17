@@ -20,7 +20,7 @@ RSpec.describe 'Conversion[Array<String>]' do
     it 'raises' do
       expect { value }.to raise_error(
         ParseArgv::Error,
-        'test: argument must be one of `one`, `two`, `three` - <value>'
+        'test: argument must be one of [`one`, `two`, `three`] - <value>'
       )
     end
   end

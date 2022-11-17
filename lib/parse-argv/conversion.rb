@@ -237,15 +237,15 @@ module ParseArgv
     @ll = {}
 
     define(:integer) do |arg, type = nil, &err|
-      /\A-?\d+/.match?(arg) or err['argument have to be an integer']
+      /\A-?\d+/.match?(arg) or err['argument must be an integer']
       arg = arg.to_i
       case type
       when :positive
-        arg.positive? or err['positive integer number expected']
+        arg.positive? or err['argument must be a positive integer']
       when :negative
-        arg.negative? or err['negative integer number expected']
+        arg.negative? or err['argument must be a negative integer']
       when :nonzero
-        arg.nonzero? or err['nonzero integer number expected']
+        arg.nonzero? or err['argument must be a nonzero integer']
       end
       arg
     end
@@ -253,15 +253,15 @@ module ParseArgv
 
     define(:float) do |arg, type = nil, &err|
       /\A[+\-]?\d*\.?\d+(?:[Ee][+\-]?\d+)?/.match?(arg) or
-        err['argument have to be a float number']
+        err['argument must be a float number']
       arg = arg.to_f
       case type
       when :positive
-        arg.positive? or err['positive float number expected']
+        arg.positive? or err['argument must be a positive float number']
       when :negative
-        arg.negative? or err['negative float number expected']
+        arg.negative? or err['argument must be a negative float number']
       when :nonzero
-        arg.nonzero? or err['nonzero float number expected']
+        arg.nonzero? or err['argument must be a nonzero float number']
       end
       arg
     end
@@ -269,17 +269,17 @@ module ParseArgv
 
     define(:number) do |arg, type = nil, &err|
       /\A[\+\-]?\d*\.?\d+(?:[Ee][\+\-]?\d+)?/.match?(arg) or
-        err['argument have to be a number']
+        err['argument must be a number']
       arg = arg.to_f
       argi = arg.to_i
       arg = argi if argi == arg
       case type
       when :positive
-        arg.positive? or err['positive number expected']
+        arg.positive? or err['argument must be a positive number']
       when :negative
-        arg.negative? or err['negative number expected']
+        arg.negative? or err['argument must be a negative number']
       when :nonzero
-        arg.nonzero? or err['nonzero number expected']
+        arg.nonzero? or err['argument must be a nonzero number']
       end
       arg
     end
@@ -292,7 +292,7 @@ module ParseArgv
     end
 
     define(:string) do |arg, &err|
-      arg.empty? ? err['argument can not be empty'] : arg
+      arg.empty? ? err['argument must be not empty'] : arg
     end
     define(String, :string)
 

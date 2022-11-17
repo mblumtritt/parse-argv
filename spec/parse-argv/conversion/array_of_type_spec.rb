@@ -21,7 +21,7 @@ RSpec.describe 'Conversion[[<type>]]' do
     it 'raises' do
       expect { value }.to raise_error(
         ParseArgv::Error,
-        'test: positive integer number expected - <value>'
+        'test: argument must be a positive integer - <value>'
       )
     end
   end

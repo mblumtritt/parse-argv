@@ -20,12 +20,12 @@ RSpec.describe 'Conversion[:file_name]' do
     it 'raises' do
       expect { value }.to raise_error(
         ParseArgv::Error,
-        'test: argument can not be empty - <value>'
+        'test: argument must be not empty - <value>'
       )
     end
   end
 
-  
+
 
   context 'when relative directory name is specified' do
     subject(:value) do

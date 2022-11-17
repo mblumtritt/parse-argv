@@ -18,7 +18,7 @@ RSpec.describe 'Conversion[:float]' do
     it 'raises' do
       expect { value }.to raise_error(
         ParseArgv::Error,
-        'test: argument have to be a float number - <value>'
+        'test: argument must be a float number - <value>'
       )
     end
   end
@@ -41,7 +41,7 @@ RSpec.describe 'Conversion[:float]' do
       it 'raises' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: positive float number expected - <value>'
+          'test: argument must be a positive float number - <value>'
         )
       end
     end
@@ -64,7 +64,7 @@ RSpec.describe 'Conversion[:float]' do
       it 'raises' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: negative float number expected - <value>'
+          'test: argument must be a negative float number - <value>'
         )
       end
     end
@@ -86,7 +86,7 @@ RSpec.describe 'Conversion[:float]' do
       it 'raises' do
         expect { value }.to raise_error(
           ParseArgv::Error,
-          'test: nonzero float number expected - <value>'
+          'test: argument must be a nonzero float number - <value>'
         )
       end
     end
