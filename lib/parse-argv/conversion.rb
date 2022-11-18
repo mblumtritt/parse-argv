@@ -288,9 +288,9 @@ module ParseArgv
     define(Numeric, :number)
 
     define(:byte) do |arg, base: 1024, &err|
-      match = /\A(\d*\.?\d+(?:[Ee][\+\-]?\d+)?)([kMGTPEZY]?)/.match(arg)
-      match or err['argument have to be a byte number']
-      (match[1].to_f * (base**' kMGTPEZY'.index(match[2]))).to_i
+      match = /\A(\d*\.?\d+(?:[Ee][\+\-]?\d+)?)([kmgtpezyKMGTPEZY]?)/.match(arg)
+      match or err['argument must be a byte number']
+      (match[1].to_f * (base**' kmgtpezy'.index(match[2].downcase))).to_i
     end
 
     define(:string) do |arg, &err|
