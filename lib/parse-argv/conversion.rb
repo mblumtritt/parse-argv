@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
+require 'set'
+
 module ParseArgv
   #
   # The Conversion module provides an interface to convert String arguments to
-  # different types and is used by the {Result#as} method.
+  # different types and is used by the {Result::Value#as} method.
   #
   # Besides the build-in defined types custom conversion functions can be
   # defined with {Conversion.define}.
@@ -125,19 +127,19 @@ module ParseArgv
       #
       #   - Symbol: a defined function; see {.define}
       #   - Class: function associated to the given Class
-      #   - Array<String>: function to pass only given strings
+      #   - Enumerable<String>: function to pass only given strings
       #   - Array(type): function returning converted elements of argument
       #     array
       #   - Regexp: function which passes matching arguments
       #
-      # @param type [Symbol, Class, Array<String>, Array(type), Regexp]
+      # @param type [Symbol, Class, Enumerable<String>, Array(type), Regexp]
       # @return [#call] conversion function
       #
       # @example type is a Symbol
-      #   ParseArgv::Conversion[:downcase]
-      #   # => Proc which converts an argument to lower case
-      #   ParseArgv::Conversion[:downcase].call('HELLo')
-      #   # => "HELLO"
+      #   ParseArgv::Conversion[:integer]
+      #   # => Proc which converts an argument into an Integer
+      #   ParseArgv::Conversion[:integer].call('42')
+      #   # => 42
       #
       # @example type is a Class
       #   ParseArgv::Conversion[Time]
@@ -152,10 +154,10 @@ module ParseArgv
       #   # => "bar"
       #
       # @example type is a Array(type)
-      #   ParseArgv::Conversion[[:positive]]
-      #   # => Proc which converts an argument array to positive Integers
-      #   ParseArgv::Conversion[[:positive]].call('[42, 21]')
-      #   # => [42, 21]
+      #   ParseArgv::Conversion[[:number]]
+      #   # => Proc which converts an argument array to numbers
+      #   ParseArgv::Conversion[[:number]].call('42, 21.84')
+      #   # => [42, 21.84]
       #
       # @example type is a Regexp
       #   Conversion[/\Ate+st\z/]
@@ -165,9 +167,12 @@ module ParseArgv
       #
       def [](type)
         return regexp_match(type) if type.is_a?(Regexp)
-        return array_type(type) if type.is_a?(Array)
-        @ll[type] ||
-          @ll.fetch(type.to_sym) { raise(UnknownAttributeConverterError, type) }
+        if type.is_a?(Array) && type.size == 1
+          return array_of(Conversion[type.first])
+        end
+        return enum_type(type) if type.is_a?(Enumerable)
+        (@ll[type] || @ll[type.to_sym]) or
+          raise(UnknownAttributeConverterError, type)
       end
 
       #
@@ -181,8 +186,8 @@ module ParseArgv
       #
       #   @example define the type +:odd_number+
       #     ParseArgv::Conversion.define(:odd_number) do |arg, &err|
-      #       result = arg.to_i
-      #       result.odd? ? result : err['not an odd number']
+      #       result = ParseArgv::Conversion[:number].call(arg, &err)
+      #       result.odd? ? result : err['argument must be an odd number']
       #     end
       #
       # @overload define(new_name, old_name)
@@ -202,13 +207,6 @@ module ParseArgv
 
       private
 
-      def one_of(ary)
-        proc do |arg, &err|
-          ary.include?(arg) and next arg
-          err["argument must be one of #{ary.map { |s| "`#{s}`" }.join(', ')}"]
-        end
-      end
-
       def regexp_match(regexp)
         proc do |arg, *args, &err|
           if args.include?(:match)
@@ -220,9 +218,13 @@ module ParseArgv
         end
       end
 
-      def array_type(ary)
-        return one_of(ary.map(&:to_s).map!(&:strip)) if ary.size != 1
-        array_of(Conversion[ary.first])
+      def enum_type(enum)
+        set = Set.new(enum) { |e| e.to_s.strip }
+        proc do |arg, &err|
+          next arg if set.include?(arg)
+          allowed = set.map { |s| "`#{s}`" }.join(', ')
+          err["argument must be one of [#{allowed}]"]
+        end
       end
 
       def array_of(type)
