@@ -1,5 +1,45 @@
 # frozen_string_literal: true
 
+#
+# ParseArgv uses a help text of a command line interface (CLI) to find out how
+# to parse a command line. It takes care that required command line arguments
+# are given and optional arguments are consumed.
+#
+# With a given help text and a command line it produces a {Result} which
+# contains all values and meta data ({ParseArgv.from}). The {Result::Value}s
+# support type {Conversion} and contextual error handling ({Result::Value#as}).
+#
+# For some debugging and test purpose it can also serialize a given help text
+# to a informational format ({ParseArgv.parse}).
+#
+# For details about the help text syntax see {file:syntax.md}.
+#
+# @example
+#   require 'parse-argv'
+#
+#   args = ParseArgv.from <<~HELP
+#     usage: test [options] <infile> [<outfile>]
+#
+#     This is just a demonstration.
+#
+#     options:
+#       -f, --format <format>   specify the format
+#       --verbose               enable verbose mode
+#       -h, --help              print this help text
+#   HELP
+#
+#   args.verbose?
+#   #=> true, when "--verbose" argument was specified
+#   #=> false, when "--verbose" argument was not specified
+#
+#   args[:infile].as(File, :readable)
+#   #=> file name
+#
+#   args.outfile?
+#   #=> true, when second argument was specified
+#   args.outfile
+#   #=> second argument or nil when not specified
+#
 module ParseArgv
   #
   # Parses the given +help_text+ and command line +argv+ to create an {Result}.
@@ -74,7 +114,7 @@ module ParseArgv
     #
     attr_reader :code
     #
-    # @return [Command] related command
+    # @return [Result::Command] related command
     #
     attr_reader :command
 
@@ -84,7 +124,7 @@ module ParseArgv
     #
 
     #
-    # @param command [Command] related command
+    # @param command [Result::Command] related command
     # @param message [String] message to be reported
     # @param code [Integer] error code
     #
@@ -96,50 +136,50 @@ module ParseArgv
   end
 
   #
-  # Represents a command.
-  #
-  class Command
-    #
-    # @return [String] complete command name
-    #
-    attr_reader :full_name
-    #
-    # @return [String] subcommand name
-    #
-    attr_reader :name
-
-    # @!visibility private
-    def initialize(full_name, help, name = nil)
-      @full_name = full_name.freeze
-      @help = help
-      @name = name || +@full_name
-    end
-
-    # @!parse attr_reader :help
-    # @return [String] help text of the command
-    def help
-      return @help if @help.is_a?(String)
-      @help.shift while @help.first&.empty?
-      @help.pop while @help.last&.empty?
-      @help = @help.join("\n").freeze
-    end
-
-    # @!visibility private
-    def inspect
-      "#{__to_s[..-2]} #{@full_name}>"
-    end
-
-    alias __to_s to_s
-    private :__to_s
-    alias to_s name
-  end
-
-  #
   # The result of a complete parsing process made with {ParseArgv.from}. It
   # contains all arguments parsed from the command line and the defined
   # commands.
   #
   class Result
+    #
+    # Represents a command with a name and related help text
+    #
+    class Command
+      #
+      # @return [String] complete command name
+      #
+      attr_reader :full_name
+      #
+      # @return [String] subcommand name
+      #
+      attr_reader :name
+
+      # @!visibility private
+      def initialize(full_name, help, name = nil)
+        @full_name = full_name.freeze
+        @help = help
+        @name = name || +@full_name
+      end
+
+      # @!parse attr_reader :help
+      # @return [String] help text of the command
+      def help
+        return @help if @help.is_a?(String)
+        @help.shift while @help.first&.empty?
+        @help.pop while @help.last&.empty?
+        @help = @help.join("\n").freeze
+      end
+
+      # @!visibility private
+      def inspect
+        "#{__to_s[..-2]} #{@full_name}>"
+      end
+
+      alias __to_s to_s
+      private :__to_s
+      alias to_s name
+    end
+
     #
     # This is a helper class to get parsed arguments from {Result} to be
     # converted.
@@ -184,7 +224,7 @@ module ParseArgv
       # @example convert to Time and use the +reference+ to complete  the the date parts (when not given)
       #   sample.as(Time, reference: Date.new(2022, 1, 2))
       #
-      # @param type [Symbol, Class, Array<String>, Array(type), Regexp]
+      # @param type [Symbol, Class, Enumerable<String>, Array(type), Regexp]
       #   conversion type, see {Conversion.[]}
       # @param args [Array<Object>] optional arguments to be forwarded to the
       #   conversion procedure
@@ -545,7 +585,7 @@ module ParseArgv
       }.compare_by_identity
     end
 
-    class CommandParser < Command
+    class CommandParser < Result::Command
       def initialize(name, help)
         super
         @options = {}
@@ -567,7 +607,7 @@ module ParseArgv
       end
 
       def to_cmd
-        Command.new(@full_name, @help, @name)
+        Result::Command.new(@full_name, @help, @name)
       end
 
       def to_h
@@ -835,8 +875,10 @@ module ParseArgv
 
   @on_error = ->(e) { $stderr.puts e or exit e.code }
 
-  autoload(:Conversion, "#{__FILE__[..-4]}/conversion")
-  autoload(:VERSION, "#{__FILE__[..-4]}/version")
+  lib_dir = __FILE__[..-4]
+
+  autoload(:Conversion, "#{lib_dir}/conversion")
+  autoload(:VERSION, "#{lib_dir}/version")
 
   private_constant(
     :Assemble,

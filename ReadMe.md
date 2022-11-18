@@ -32,13 +32,15 @@ will be interpreted as
 - there is a command "test"
 - which requires and argument "infile"
 - optionally accepts an  second argument "outfile"
-- accepts an option named "format" when <kbd>-f</kbd> or <kbd>--format</kbd> are given
-- defines the boolean option "verbose" when <kbd>--verbose</kbd> is given
-- defines the boolean option "help" when <kbd>-h</kbd> or <kbd>--help</kbd> are given
+- accepts an option named "format" when `-f` or `--format` are given
+- defines the boolean option "verbose" when `--verbose` is given
+- defines the boolean option "help" when `-h` or `--help` are given
 
 ## How To Use
 
 Please, see the [Gem's help](https://rubydoc.info/gems/parse-argv) for detailed information, or have a look at the  [`./examples`](./examples) directory which contains some commands to play around.
+
+The supported help text syntax and the command line interface syntax are described in the [syntax help](./syntax.md).
 
 In general you just specify the help text and get the parsed command line:
 
@@ -67,77 +69,6 @@ args.outfile?
 #=> true, when second argument was specified
 args.outfile
 #=> second argument or nil when not specified
-```
-
-## Help Text Syntax
-
-The help text must follow these simple rules:
-
-• All help text should be designed to be presented to the user as command line help.
-
-• A command is recognized by a line with the following pattern:
-```
-usage: command
-```
-
-• A subcommand is recognized by a line with the following pattern:
-```
-usage: command subcommand
-```
-
-• Command line arguments must be enclosed with less-than/greater-than characters (<kbd><</kbd> and <kbd>></kbd>).
-```
-usage: command <argument>
-```
-
-• Optional arguments are enclosed in square brackets (<kbd>[</kbd> and <kbd>]</kbd>).
-```
-usage: command [<argument>]
-```
-
-• Arguments to be collected in arrays are marked with three dots at the end.
-```
-usage: command <argument>...
-```
-```
-usage: command [<argument>...]
-```
-
-• Options start after any number of spaces with a stroke (<kbd>-</kbd>) and a single letter, or two strokes (<kbd>--</kbd>)and a word, which must be followed by a descriptive text.
-```
-  -s   this is a boolean option (switch)
-```
-```
-  --switch   this is a boolean option (switch)
-```
-
-• Options that are to be specified both as a word and its abbreviation can be combined with a comma (<kbd>,</kbd>).
-```
-  -s, --switch   this is a boolean option (switch)
-```
-
-• Options that require an argument additionally define the name of the argument after the declaration, enclosed with less-than/greater-than characters (<kbd><</kbd> and <kbd>></kbd>).
-```
-  -o <option>   this is an option with the argument named "option"
-```
-```
-  --opt <option>   this is an option with the argument named "option"
-```
-```
-  -o, --opt <option>   this is an option with the argument named "option"
-```
-
-• If multiple subcommands are to be defined (git-like commands), the individual commands can be separated with a line beginning with a <kbd>#</kbd> character.
-```
-usage: command
-Options and helptext for "command" here...
-
-#
-
-This is the help text header for the subcommand
-
-usage: command subcommand
-Options and helptext for the subcommand here...
 ```
 
 ## Installation
