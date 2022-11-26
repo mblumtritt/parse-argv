@@ -76,3 +76,83 @@ Options and helptext for the subcommand here...
 
 ## Command Line Syntax
 
+### Simple Arguments
+
+A command line program using ParseArgv accepts all required and optional parameters as expected. The user will be notified of missing or excess parameters, if any.
+
+Definition example:
+
+```
+usage: sample <infile> [<template>] <outfile>
+```
+
+The `<infile>` and `<outfile>` parameters are required. If they are not specified, the user will be notified.
+
+```shell
+sample ./source.md ./out.html
+# ok, infile: "./source.md", outfile: "./out.html"
+
+sample ./source.md
+# error: "sample: argument missing - <outfile>"
+```
+
+If three parameters are specified in this example, the optional third parameter is also accepted.
+
+```shell
+sample ./source.md ./template.yaml ./out.html
+# ok, infile: "./source.md", template: "./template.yaml", outfile: "./out.html"
+```
+
+If too many parameters are specified, the user will be notified.
+
+```shell
+sample ./source.md ./template.yaml ./out.html ./some.txt
+# error: "sample: too many arguments"
+```
+
+### Options
+
+Consider the following definition example:
+
+```
+usage: sample <infile>
+
+options:
+  -o, --out <outfile>         specify output file name
+  -t, --template <template>   use given template
+  -c. --colors                enable color mode
+  -v, --verbose               enable verbose mode
+```
+
+Here the user must specify a `<infile>` parameter, can add optional (named) arguments (`<outfile>` and `<template>`) and select parameterless options (`<colors>` and `verbose`).
+
+Since `<infile>`is a required argument, it must always be specified, all other specifications are optional.
+
+```shell
+sample ./source.md
+# ok, infile: "./source.md"
+
+sample ./source.md --out ./result.html -c
+# ok, infile: "./source.md", outfile: "./result.html", colors: true
+```
+
+The short forms of the options can also be combined.
+
+```shell
+sample ./source.md -voc ./result.html
+# ok, infile: "./source.md", outfile: "./result.html", colors: true, verbose: true
+```
+
+To write down the affiliation of named parameters more clearly, the following notation is allowed.
+
+```shell
+sample ./source.md --out:./result.html -t=nice.yaml
+# ok, infile: "./source.md", outfile: "./result.html", template: "nice.yaml"
+```
+
+Parameterless options can be understood as switches. Therefore it is possible to write them down like this:
+
+```shell
+sample ./source.md --colors:on -v:off
+# ok, infile: "./source.md", colors: true, verbose: false
+```
