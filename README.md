@@ -1,4 +1,4 @@
-# ParseArgv
+# ParseArgv ![version](https://img.shields.io/gem/v/parse-argv?label=)
 
 A command line parser that only needs your help text.
 
