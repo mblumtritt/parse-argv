@@ -4,7 +4,7 @@ A command line parser that only needs your help text.
 
 - Gem: [rubygems.org](https://rubygems.org/gems/parse-argv)
 - Source: [github.com](https://github.com/mblumtritt/parse-argv)
-- Help: [rubydoc.info](https://rubydoc.info/gems/parse-argv)
+- Help: [rubydoc.info](https://rubydoc.info/gems/parse-argv/ParseArgv)
 
 ## Description
 
