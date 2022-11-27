@@ -38,7 +38,7 @@ will be interpreted as
 
 ## How To Use
 
-Please, see the [Gem's help](https://rubydoc.info/gems/parse-argv) for detailed information, or have a look at the  [`./examples`](./examples) directory which contains some commands to play around.
+Please, see the [Gem's help](https://rubydoc.info/gems/parse-argv/ParseArgv) for detailed information, or have a look at the  [`./examples`](./examples) directory which contains some commands to play around.
 
 The supported help text syntax and the command line interface syntax are described in the [syntax help](./syntax.md).
 
