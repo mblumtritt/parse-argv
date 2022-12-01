@@ -16,7 +16,7 @@
 
 ![last commit](https://img.shields.io/github/last-commit/mblumtritt/parse-argv/main)
 ![files](https://img.shields.io/github/directory-file-count/mblumtritt/parse-argv)
-![build status](https://img.shields.io/github/workflow/status/mblumtritt/parse-argv/Ruby)
+![build status](https://img.shields.io/github/workflow/status/mblumtritt/parse-argv/Test)
 ![dependencies](https://img.shields.io/librariesio/github/mblumtritt/parse-argv)
 
 ![commit activity](https://img.shields.io/github/commit-activity/m/mblumtritt/parse-argv)
