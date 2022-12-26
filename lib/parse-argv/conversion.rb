@@ -324,7 +324,7 @@ module ParseArgv
     define(Array, :array)
 
     define(:date) do |arg, reference: nil, &err|
-      defined?(::Date) || require('date')
+      defined?(::Date) or require('date')
       ret = Date._parse(arg)
       err['argument must be a date'] if ret.empty?
       reference ||= Date.today
@@ -339,7 +339,7 @@ module ParseArgv
     defined?(::Date) && define(Date, :date)
 
     define(:time) do |arg, reference: nil, &err|
-      defined?(::Date) || require('date')
+      defined?(::Date) or require('date')
       ret = Date._parse(arg)
       err['argument must be a time'] if ret.empty?
       reference ||= Date.today

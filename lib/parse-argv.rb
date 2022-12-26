@@ -97,8 +97,7 @@ module ParseArgv
   # @return [ParseArgv] itself
   #
   def self.on_error(function = nil, &block)
-    function ||= block
-    return @on_error if function.nil?
+    function ||= block or return @on_error
     @on_error = function == :raise ? nil : function
     self
   end
