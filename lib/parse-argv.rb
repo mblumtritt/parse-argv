@@ -164,8 +164,8 @@ module ParseArgv
       # @return [String] help text of the command
       def help
         return @help if @help.is_a?(String)
-        @help.shift while @help.first&.empty?
-        @help.pop while @help.last&.empty?
+        @help.shift while @help[0]&.empty?
+        @help.pop while @help[-1]&.empty?
         @help = @help.join("\n").freeze
       end
 
@@ -354,7 +354,7 @@ module ParseArgv
       name = name.to_sym
       value = @args[name]
       return value unless value.nil?
-      args.empty? ? (block || ATTRIBUTE_ERROR).call(name) : args.first
+      args.empty? ? (block || ATTRIBUTE_ERROR).call(name) : args[0]
     end
 
     #
@@ -423,7 +423,7 @@ module ParseArgv
     #   # String of format option or nil, when not specified
     #
     def method_missing(sym, *args)
-      args.size.zero? or
+      args.empty? or
         raise(
           ArgumentError,
           "wrong number of arguments (given #{args.size}, expected 0)"
@@ -495,7 +495,7 @@ module ParseArgv
         args = @argv.take_while { |arg| arg[0] != '-' }
         return @main if args.empty?
         found = find_command(args)
-        found.nil? ? raise(InvalidCommandError.new(@main, args.first)) : found
+        found.nil? ? raise(InvalidCommandError.new(@main, args[0])) : found
       end
 
       def find_command(args)
@@ -714,7 +714,7 @@ module ParseArgv
         keys = @arguments.keys.reverse!
         while argv.size < @arguments.size
           nonreq = keys.find { |key| @arguments[key][0] == 'o' }
-          nonreq or raise(ArgumentMissingError.new(self, @arguments.keys.last))
+          nonreq or raise(ArgumentMissingError.new(self, @arguments.keys[-1]))
           @arguments.delete(keys.delete(nonreq))
           @result[nonreq] = nil
         end
@@ -765,10 +765,8 @@ module ParseArgv
         checked(name, DoublicateOptionDefinitionError)
       end
 
-      def option(match)
-        @options[checked_opt(match[1])] = @options[
-          checked_opt(match[2])
-        ] = match[3]
+      def option(mtc)
+        @options[checked_opt(mtc[1])] = @options[checked_opt(mtc[2])] = mtc[3]
       end
 
       def simple_option(match)

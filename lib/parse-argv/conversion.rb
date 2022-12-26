@@ -168,7 +168,7 @@ module ParseArgv
       def [](type)
         return regexp_match(type) if type.is_a?(Regexp)
         if type.is_a?(Array) && type.size == 1
-          return array_of(Conversion[type.first])
+          return array_of(Conversion[type[0]])
         end
         return enum_type(type) if type.is_a?(Enumerable)
         (@ll[type] || @ll[type.to_sym]) or
