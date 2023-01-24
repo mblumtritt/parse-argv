@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../helper'
-require_relative 'shared'
 
 RSpec.describe 'Conversion[Array<String>]' do
   subject(:value) do

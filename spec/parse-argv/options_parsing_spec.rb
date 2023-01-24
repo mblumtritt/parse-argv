@@ -5,10 +5,7 @@ require_relative '../helper'
 RSpec.describe 'options parsing' do
   context 'parse switches' do
     context 'when a long format and a shortcut are defined' do
-      let(:help_text) { <<~HELP }
-        usage: test
-          -s, --switch  simple switch
-      HELP
+      let(:help_text) { "usage: test\n -s, --switch  simple switch" }
 
       it 'accepts the long format' do
         expect(ParseArgv.from(help_text, %w[--switch]).switch?).to be true
@@ -20,34 +17,30 @@ RSpec.describe 'options parsing' do
     end
 
     context 'when only the long format is defined' do
-      let(:help_text) { <<~HELP }
-        usage: test
-          --switch  simple switch
-      HELP
-
       it 'accepts the long format' do
-        expect(ParseArgv.from(help_text, %w[--switch]).switch?).to be true
+        expect(
+          ParseArgv.from(
+            "usage: test\n --switch  simple switch",
+            %w[--switch]
+          ).switch?
+        ).to be true
       end
     end
 
     context 'when only the shortcut format is defined' do
-      let(:help_text) { <<~HELP }
-        usage: test
-          -s  simple switch
-      HELP
-
       it 'accepts the shortcut format' do
-        expect(ParseArgv.from(help_text, %w[-s]).s?).to be true
+        expect(
+          ParseArgv.from("usage: test\n -s  simple switch", %w[-s]).s?
+        ).to be true
       end
     end
   end
 
   context 'parse options' do
     context 'when a long format and a shortcut are defined' do
-      let(:help_text) { <<~HELP }
-        usage: test
-          -o, --opt <option>  option with parameter
-      HELP
+      let(:help_text) do
+        "usage: test\n -o, --opt <option>  option with parameter"
+      end
 
       it 'accepts the long format' do
         expect(
@@ -63,27 +56,23 @@ RSpec.describe 'options parsing' do
     end
 
     context 'when only the long format is defined' do
-      let(:help_text) { <<~HELP }
-        usage: test
-          --opt <option>  option with parameter
-      HELP
-
       it 'accepts the long format' do
         expect(
-          ParseArgv.from(help_text, %w[--opt argument]).option
+          ParseArgv.from(
+            "usage: test\n --opt <option>  option with parameter",
+            %w[--opt argument]
+          ).option
         ).to eq 'argument'
       end
     end
 
     context 'when only the shortcut format is defined' do
-      let(:help_text) { <<~HELP }
-        usage: test
-          -o <option>  option with parameter
-      HELP
-
       it 'accepts the shortcut format' do
         expect(
-          ParseArgv.from(help_text, %w[-o argument]).option
+          ParseArgv.from(
+            "usage: test\n -o <option>  option with parameter",
+            %w[-o argument]
+          ).option
         ).to eq 'argument'
       end
     end
@@ -110,27 +99,23 @@ RSpec.describe 'options parsing' do
     end
 
     context 'when only the long format is defined' do
-      let(:help_text) { <<~HELP }
-        usage: test
-          --opt:<option>  option with parameter
-      HELP
-
       it 'accepts the long format' do
         expect(
-          ParseArgv.from(help_text, %w[--opt argument]).option
+          ParseArgv.from(
+            "usage: test\n --opt:<option>  option with parameter",
+            %w[--opt argument]
+          ).option
         ).to eq 'argument'
       end
     end
 
     context 'when only the shortcut format is defined' do
-      let(:help_text) { <<~HELP }
-        usage: test
-          -o:<option>  option with parameter
-      HELP
-
       it 'accepts the shortcut format' do
         expect(
-          ParseArgv.from(help_text, %w[-o argument]).option
+          ParseArgv.from(
+            "usage: test\n -o:<option>  option with parameter",
+            %w[-o argument]
+          ).option
         ).to eq 'argument'
       end
     end

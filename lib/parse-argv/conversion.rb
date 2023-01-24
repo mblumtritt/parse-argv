@@ -167,9 +167,7 @@ module ParseArgv
       #
       def [](type)
         return regexp_match(type) if type.is_a?(Regexp)
-        if type.is_a?(Array) && type.size == 1
-          return array_of(Conversion[type[0]])
-        end
+        return array_of(self[type[0]]) if type.is_a?(Array) && type.size == 1
         return enum_type(type) if type.is_a?(Enumerable)
         (@ll[type] || @ll[type.to_sym]) or
           raise(UnknownAttributeConverterError, type)
@@ -229,7 +227,7 @@ module ParseArgv
 
       def array_of(type)
         proc do |arg, *args, **opts, &err|
-          Conversion[:array]
+          self[:array]
             .call(arg, &err)
             .map! { |a| type.call(a, *args, **opts, &err) }
         end
@@ -254,7 +252,7 @@ module ParseArgv
     define(Integer, :integer)
 
     define(:float) do |arg, type = nil, &err|
-      /\A[+\-]?\d*\.?\d+(?:[Ee][+\-]?\d+)?/.match?(arg) or
+      /\A[+-]?\d*\.?\d+(?:[Ee][+-]?\d+)?/.match?(arg) or
         err['argument must be a float number']
       arg = arg.to_f
       case type
@@ -270,7 +268,7 @@ module ParseArgv
     define(Float, :float)
 
     define(:number) do |arg, type = nil, &err|
-      /\A[\+\-]?\d*\.?\d+(?:[Ee][\+\-]?\d+)?/.match?(arg) or
+      /\A[+-]?\d*\.?\d+(?:[Ee][+-]?\d+)?/.match?(arg) or
         err['argument must be a number']
       arg = arg.to_f
       argi = arg.to_i
@@ -288,7 +286,7 @@ module ParseArgv
     define(Numeric, :number)
 
     define(:byte) do |arg, base: 1024, &err|
-      match = /\A(\d*\.?\d+(?:[Ee][\+\-]?\d+)?)([kmgtpezyKMGTPEZY]?)/.match(arg)
+      match = /\A(\d*\.?\d+(?:[Ee][+-]?\d+)?)([kmgtpezyKMGTPEZY]?)/.match(arg)
       match or err['argument must be a byte number']
       (match[1].to_f * (base**' kmgtpezy'.index(match[2].downcase))).to_i
     end

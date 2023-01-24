@@ -25,8 +25,6 @@ RSpec.describe 'Conversion[:file_name]' do
     end
   end
 
-
-
   context 'when relative directory name is specified' do
     subject(:value) do
       ParseArgv.from("usage: test:\n --opt <value> some", argv)[:value].as(

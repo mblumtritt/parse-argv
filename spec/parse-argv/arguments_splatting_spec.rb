@@ -87,13 +87,10 @@ RSpec.describe 'arguments splatting' do
   end
 
   context 'when an argument name is already used' do
-    let(:help_text) { 'usage: test <file1> [<file1>]' }
-
     it 'raises' do
-      expect { ParseArgv.from(help_text, []) }.to raise_error(
-        ArgumentError,
-        'argument already defined - file1'
-      )
+      expect do
+        ParseArgv.from('usage: test <file1> [<file1>]', [])
+      end.to raise_error(ArgumentError, 'argument already defined - file1')
     end
   end
 end
