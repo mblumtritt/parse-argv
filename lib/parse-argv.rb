@@ -237,10 +237,9 @@ module ParseArgv
         return default if @value.nil?
         conv = Conversion[type]
         if value.is_a?(Array)
-          value.map { |v| conv.call(v, *args, **kwargs, &@error_proc) }
-        else
-          conv.call(@value, *args, **kwargs, &@error_proc)
+          return value.map { |v| conv.call(v, *args, **kwargs, &@error_proc) }
         end
+        conv.call(@value, *args, **kwargs, &@error_proc)
       rescue Error => e
         ParseArgv.on_error&.call(e) or raise
       end
@@ -447,11 +446,11 @@ module ParseArgv
 
   module Assemble
     def self.[](help_text, argv)
-      Prepare.new(Commands.new.parse(help_text)).from(argv)
+      Prepare.new(Commands.parse(help_text)).from(argv)
     end
 
     def self.commands(help_text)
-      Prepare.new(Commands.new.parse(help_text)).all
+      Prepare.new(Commands.parse(help_text)).all
     end
 
     class Prepare
@@ -527,6 +526,10 @@ module ParseArgv
     end
 
     class Commands
+      def self.parse(help_text)
+        new.parse(help_text)
+      end
+
       def initialize
         @commands = []
         @help = []
@@ -540,8 +543,7 @@ module ParseArgv
           case line
           when /\A\s*#/
             @help = ['']
-            @header_text = true
-            next
+            next @header_text = true
           when /usage: (\w+([ \w]+)?)/i
             new_command(Regexp.last_match)
           end
@@ -597,7 +599,7 @@ module ParseArgv
       end
 
       def parse(argv)
-        prepare!
+        prepare! unless @prepared
         @result = {}.compare_by_identity
         arguments = parse_argv(argv)
         process_switches
@@ -610,7 +612,7 @@ module ParseArgv
       end
 
       def to_h
-        prepare!
+        prepare! unless @prepared
         {
           full_name: @full_name,
           name: @name.freeze,
@@ -647,7 +649,6 @@ module ParseArgv
       end
 
       def prepare!
-        return if @prepared
         @help.each do |line|
           case line
           when /\A\s+-([[:alnum:]]), --([[[:alnum:]]-]+)[ :]<([[:lower:]]+)>\s+\S+/
@@ -693,7 +694,7 @@ module ParseArgv
         @arguments.each_pair do |key, type|
           @result[key] = case type
           when :optional
-            argv.empty? ? nil : argv.shift
+            argv.shift
           when :optional_rest
             argv.empty? ? nil : argv.shift(argv.size)
           when :required
@@ -744,11 +745,10 @@ module ParseArgv
         @options.each_value do |name|
           if name[0] == '!'
             name = name[1..].to_sym
-            @result[name] = false unless @result.key?(name)
-          else
-            name = name.to_sym
-            @result[name] = nil unless @result.key?(name)
+            next @result[name] = false unless @result.key?(name)
           end
+          name = name.to_sym
+          @result[name] = nil unless @result.key?(name)
         end
       end
 
